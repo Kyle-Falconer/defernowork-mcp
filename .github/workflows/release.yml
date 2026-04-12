@@ -36,7 +36,14 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "value=$(git describe --tags --always)" >> $GITHUB_OUTPUT
+        run: |
+          RAW=$(git describe --tags --long 2>/dev/null || echo "")
+          if echo "$RAW" | grep -qP '^\d+\.\d+'; then
+            VERSION=$(echo "$RAW" | sed 's/^v//')
+          else
+            VERSION="0.0.0.dev0"
+          fi
+          echo "value=$VERSION" >> $GITHUB_OUTPUT
 
       - uses: docker/build-push-action@v6
         with:

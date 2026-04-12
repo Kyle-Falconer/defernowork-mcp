@@ -45,4 +45,6 @@ packages = ["src/deferno_mcp"]
 
 [tool.hatch.version]
 source = "vcs"
-fallback-version = "0.0.0.dev0"
+
+[tool.hatch.version.raw-options]
+fallback_version = "0.0.0.dev0"
