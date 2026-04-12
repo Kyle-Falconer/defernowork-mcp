@@ -26,7 +26,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/kyle-falconer/deferno-mcp
+          images: ghcr.io/kyle-falconer/defernowork-mcp
           tags: |
             type=raw,value=latest
             type=semver,pattern={{version}}
