@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Kyle Falconer" }]
-keywords = ["mcp", "deferno", "tasks", "productivity", "claude"]
+keywords = ["mcp", "deferno", "defernowork", "defernowork.com", "deferno.work", "tasks", "productivity", "claude"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -34,7 +34,7 @@ http = [
 ]
 
 [project.scripts]
-deferno-mcp = "deferno_mcp.__main__:main"
+defernowork-mcp = "deferno_mcp.__main__:main"
 
 [build-system]
 requires = ["hatchling"]
