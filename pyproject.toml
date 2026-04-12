@@ -1,5 +1,5 @@
 [project]
-name = "deferno-mcp"
+name = "defernowork-mcp"
 version = "0.1.0"
 description = "Model Context Protocol server for the Deferno task manager backend."
 readme = "README.md"
@@ -25,8 +25,8 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://deferno.work"
-Repository = "https://github.com/kylefalconer/deferno"
-"Bug Tracker" = "https://github.com/kylefalconer/deferno/issues"
+Repository = "https://github.com/Kyle-Falconer/defernowork-mcp"
+"Bug Tracker" = "https://github.com/Kyle-Falconer/defernowork-mcp/issues"
 
 [project.optional-dependencies]
 http = [
