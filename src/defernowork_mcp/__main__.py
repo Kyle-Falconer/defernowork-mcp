@@ -1,4 +1,4 @@
-"""Entry point for ``python -m deferno_mcp`` and the ``deferno-mcp`` script."""
+"""Entry point for ``python -m defernowork_mcp`` and the ``defernowork-mcp`` script."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="deferno-mcp",
+        prog="defernowork-mcp",
         description="Deferno MCP server",
     )
     parser.add_argument(

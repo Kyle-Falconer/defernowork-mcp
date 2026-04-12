@@ -4,13 +4,13 @@ Supports two transports:
 
 **stdio** (default — local use with Claude Desktop / Code, Cursor, etc.)::
 
-    python -m deferno_mcp
+    python -m defernowork_mcp
     # or
-    deferno-mcp
+    defernowork-mcp
 
 **streamable-http** (remote — Claude.ai Connectors, any HTTP MCP client)::
 
-    deferno-mcp --transport http [--host 0.0.0.0] [--port 8080]
+    defernowork-mcp --transport http [--host 0.0.0.0] [--port 8080]
 
 For HTTP transport, include your Deferno bearer token in every request::
 
@@ -102,7 +102,7 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
             "Authentication is handled via the Authorization: Bearer <token> "
             "header — no login tool call is needed or available. "
             "Use `whoami` to confirm authentication, `list_tasks` or the "
-            "`deferno://tasks` resource to index the user's current tasks, "
+            "`defernowork://tasks` resource to index the user's current tasks, "
             "and `create_task` / `update_task` for normal CRUD. Use "
             "`split_task` to decompose a task into two subtasks, `fold_task` "
             "to insert a next-step task in a sequence, and `merge_task` to "
@@ -113,7 +113,7 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
             "Tools for managing a user's Deferno tasks. "
             "Authenticate with `login` (or set DEFERNO_TOKEN / "
             "DEFERNO_USERNAME+DEFERNO_PASSWORD env vars), then use "
-            "`whoami` to confirm, `list_tasks` or the `deferno://tasks` "
+            "`whoami` to confirm, `list_tasks` or the `defernowork://tasks` "
             "resource to index tasks, and `create_task` / `update_task` "
             "for normal CRUD. Use `split_task` to decompose a task, "
             "`fold_task` to insert a next step, and `merge_task` to "
@@ -390,30 +390,30 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
         return json.dumps(history)
 
     # -------------------------------------------------------------- resources
-    @mcp.resource("deferno://tasks")
+    @mcp.resource("defernowork://tasks")
     async def all_tasks_resource() -> str:
         """All tasks owned by the authenticated user (JSON array)."""
         async with _get_client() as client:
             tasks = await client.list_tasks()
         return json.dumps(tasks, indent=2)
 
-    @mcp.resource("deferno://tasks/today")
+    @mcp.resource("defernowork://tasks/today")
     async def today_resource() -> str:
         """Today's prioritized tasks (JSON array)."""
         async with _get_client() as client:
             daily = await client.daily_tasks()
         return json.dumps(daily, indent=2)
 
-    @mcp.resource("deferno://tasks/mood-history")
+    @mcp.resource("defernowork://tasks/mood-history")
     async def mood_history_resource() -> str:
         """Mood history for finished tasks (JSON array)."""
         async with _get_client() as client:
             history = await client.mood_history()
         return json.dumps(history, indent=2)
 
-    @mcp.resource("deferno://task/{task_id}")
+    @mcp.resource("defernowork://task/{task_id}")
     async def task_resource(task_id: str) -> str:
-        """A single task, addressable by UUID as ``deferno://task/<id>``."""
+        """A single task, addressable by UUID as ``defernowork://task/<id>``."""
         async with _get_client() as client:
             task = await client.get_task(unquote(task_id))
         return json.dumps(task, indent=2)
@@ -435,13 +435,13 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
     Clients must pass ``Authorization: Bearer <deferno-token>`` with every
     request. The token is extracted by :class:`_BearerAuthMiddleware` and
     stored in :data:`_request_token` so tool handlers can create a
-    per-request :class:`~deferno_mcp.client.DefernoClient`.
+    per-request :class:`~defernowork_mcp.client.DefernoClient`.
     """
     try:
         import uvicorn
     except ImportError as exc:
         raise SystemExit(
-            "uvicorn is required for HTTP transport: pip install 'deferno-mcp[http]'"
+            "uvicorn is required for HTTP transport: pip install 'defernowork-mcp[http]'"
         ) from exc
 
     from starlette.types import ASGIApp, Receive, Scope, Send
