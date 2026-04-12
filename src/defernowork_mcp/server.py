@@ -41,7 +41,7 @@ from .client import DefernoClient, DefernoError
 
 __all__ = ["create_server", "main", "main_http", "DefernoClient"]
 
-logger = logging.getLogger("deferno-mcp")
+logger = logging.getLogger("defernowork-mcp")
 
 # Per-request Bearer token injected by the HTTP auth middleware.
 # Falls back to DEFERNO_TOKEN env var for stdio transport.
@@ -121,7 +121,7 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
         )
 
     mcp = FastMCP(
-        "deferno",
+        "defernowork",
         instructions=instructions,
         **security_kwargs,
     )
