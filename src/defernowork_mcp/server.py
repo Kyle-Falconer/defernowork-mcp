@@ -117,32 +117,19 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
         # Older SDK versions don't have TransportSecuritySettings — skip.
         pass
 
-    if http_transport:
-        instructions = (
-            "Tools for managing a user's Deferno tasks. "
-            "Authentication is handled via the Authorization: Bearer <token> "
-            "header — no login tool call is needed or available. "
-            "Use `whoami` to confirm authentication, `list_tasks` or the "
-            "`defernowork://tasks` resource to index the user's current tasks, "
-            "and `create_task` / `update_task` for normal CRUD. Use "
-            "`split_task` to decompose a task into two subtasks, `fold_task` "
-            "to insert a next-step task in a sequence, and `merge_task` to "
-            "roll active children back into their parent."
-        )
-    else:
-        instructions = (
-            "Tools for managing a user's Deferno tasks. "
-            "If any tool returns a 401 error, call `start_auth` to begin "
-            "authentication — it returns a URL for the user to open in "
-            "their browser. After they sign in, ask them to paste the "
-            "code shown on screen and call `complete_auth` with it. "
-            "Use `whoami` to confirm auth, `list_tasks` or the "
-            "`defernowork://tasks` resource to index tasks, and "
-            "`create_task` / `update_task` for normal CRUD. Use "
-            "`split_task` to decompose a task, `fold_task` to insert "
-            "a next step, and `merge_task` to roll children back into "
-            "their parent."
-        )
+    instructions = (
+        "Tools for managing a user's Deferno tasks. "
+        "If any tool returns a 401 error, call `start_auth` to begin "
+        "authentication — it returns a URL for the user to open in "
+        "their browser. After they sign in, ask them to paste the "
+        "code shown on screen and call `complete_auth` with it. "
+        "Use `whoami` to confirm auth, `list_tasks` or the "
+        "`defernowork://tasks` resource to index tasks, and "
+        "`create_task` / `update_task` for normal CRUD. Use "
+        "`split_task` to decompose a task, `fold_task` to insert "
+        "a next step, and `merge_task` to roll children back into "
+        "their parent."
+    )
 
     mcp = FastMCP(
         "defernowork",
@@ -151,66 +138,63 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
     )
 
     # ------------------------------------------------------------------ auth
-    # start_auth / complete_auth are only exposed on stdio transport.
-    # On HTTP transport auth is handled entirely by the Authorization header.
-    if not http_transport:
-        @mcp.tool()
-        async def start_auth() -> str:
-            """Begin the Deferno authentication flow.
+    @mcp.tool()
+    async def start_auth() -> str:
+        """Begin the Deferno authentication flow.
 
-            Returns a URL for the user to open in their browser and a
-            ``session_id`` needed by ``complete_auth``.  After the user
-            signs in, they will see a short code to paste back here.
-            """
-            async with _get_anon_client() as client:
-                try:
-                    result = await client.cli_init()
-                except DefernoError as exc:
-                    return _format_error(exc)
-            return json.dumps({
-                "auth_url": result["auth_url"],
-                "session_id": result["session_id"],
-                "instructions": (
-                    "Show the auth_url to the user and ask them to open it "
-                    "in their browser. After they sign in, they will see a "
-                    "short code. Ask the user to paste that code, then call "
-                    "complete_auth with the session_id and code."
-                ),
-            })
+        Returns a URL for the user to open in their browser and a
+        ``session_id`` needed by ``complete_auth``.  After the user
+        signs in, they will see a short code to paste back here.
+        """
+        async with _get_anon_client() as client:
+            try:
+                result = await client.cli_init()
+            except DefernoError as exc:
+                return _format_error(exc)
+        return json.dumps({
+            "auth_url": result["auth_url"],
+            "session_id": result["session_id"],
+            "instructions": (
+                "Show the auth_url to the user and ask them to open it "
+                "in their browser. After they sign in, they will see a "
+                "short code. Ask the user to paste that code, then call "
+                "complete_auth with the session_id and code."
+            ),
+        })
 
-        @mcp.tool()
-        async def complete_auth(session_id: str, code: str) -> str:
-            """Finish authentication by exchanging the browser code for a token.
+    @mcp.tool()
+    async def complete_auth(session_id: str, code: str) -> str:
+        """Finish authentication by exchanging the browser code for a token.
 
-            ``session_id`` comes from the ``start_auth`` response.
-            ``code`` is the short code the user copied from their browser
-            after signing in.  Saves credentials to disk so future
-            sessions authenticate automatically.
-            """
-            async with _get_anon_client() as client:
-                try:
-                    result = await client.cli_verify(session_id, code)
-                except DefernoError as exc:
-                    return _format_error(exc)
-            token = result["token"]
-            user = result.get("user", {})
-            username = user.get("username", "")
-            base_url = client.base_url
-            save_credentials(token, username, base_url)
-            return json.dumps({"authenticated": True, "username": username})
+        ``session_id`` comes from the ``start_auth`` response.
+        ``code`` is the short code the user copied from their browser
+        after signing in.  Saves credentials to disk so future
+        sessions authenticate automatically.
+        """
+        async with _get_anon_client() as client:
+            try:
+                result = await client.cli_verify(session_id, code)
+            except DefernoError as exc:
+                return _format_error(exc)
+        token = result["token"]
+        user = result.get("user", {})
+        username = user.get("username", "")
+        base_url = client.base_url
+        save_credentials(token, username, base_url)
+        return json.dumps({"authenticated": True, "username": username})
 
-        @mcp.tool()
-        async def logout() -> str:
-            """Log out and remove saved credentials."""
-            async with _get_client() as client:
-                try:
-                    await client.logout()
-                except DefernoError as exc:
-                    # Still clear local credentials even if the server call fails
-                    clear_credentials()
-                    return _format_error(exc)
-            clear_credentials()
-            return "Logged out and credentials removed."
+    @mcp.tool()
+    async def logout() -> str:
+        """Log out and remove saved credentials."""
+        async with _get_client() as client:
+            try:
+                await client.logout()
+            except DefernoError as exc:
+                # Still clear local credentials even if the server call fails
+                clear_credentials()
+                return _format_error(exc)
+        clear_credentials()
+        return "Logged out and credentials removed."
 
     @mcp.tool()
     async def whoami() -> str:
