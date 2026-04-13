@@ -16,14 +16,13 @@ For HTTP transport, include your Deferno bearer token in every request::
 
     Authorization: Bearer <your-token>
 
-Get your token from the Deferno Settings page → "Copy API token", or from
-browser dev tools: ``localStorage.getItem("deferno_token")``.
+For stdio transport, authenticate once with::
 
-For stdio transport, configure credentials via environment variables:
+    defernowork-mcp auth
 
-* ``DEFERNO_BASE_URL`` (default: ``http://127.0.0.1:3000``)
-* ``DEFERNO_TOKEN``    — pre-existing bearer token
-* ``DEFERNO_USERNAME`` / ``DEFERNO_PASSWORD`` — auto-login at startup
+This opens a browser-based login flow and saves the token to
+``~/.config/defernowork/credentials.json``.  Alternatively, set
+``DEFERNO_TOKEN`` as an environment variable.
 """
 
 from __future__ import annotations
@@ -38,6 +37,7 @@ from urllib.parse import unquote
 from mcp.server.fastmcp import FastMCP
 
 from .client import DefernoClient, DefernoError
+from .credentials import load_credentials, save_credentials, clear_credentials
 
 __all__ = ["create_server", "main", "main_http", "DefernoClient"]
 
@@ -51,10 +51,31 @@ _request_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 
 
 def _get_client() -> DefernoClient:
-    """Return a DefernoClient for the current request/session."""
+    """Return a DefernoClient for the current request/session.
+
+    Token resolution order:
+    1. Per-request Bearer header (HTTP transport)
+    2. ``DEFERNO_TOKEN`` env var
+    3. Saved credentials on disk (``~/.config/defernowork/credentials.json``)
+    """
     base_url = os.environ.get("DEFERNO_BASE_URL", "http://127.0.0.1:3000")
     token = _request_token.get() or os.environ.get("DEFERNO_TOKEN")
+    if token is None:
+        creds = load_credentials()
+        if creds:
+            token = creds.get("token")
+            if not os.environ.get("DEFERNO_BASE_URL"):
+                base_url = creds.get("base_url", base_url)
     return DefernoClient(base_url=base_url, token=token)
+
+
+def _get_anon_client() -> DefernoClient:
+    """Return an unauthenticated DefernoClient (for auth init/verify)."""
+    base_url = os.environ.get("DEFERNO_BASE_URL", "http://127.0.0.1:3000")
+    creds = load_credentials()
+    if creds and not os.environ.get("DEFERNO_BASE_URL"):
+        base_url = creds.get("base_url", base_url)
+    return DefernoClient(base_url=base_url)
 
 
 def _compact(payload: dict[str, Any]) -> dict[str, Any]:
@@ -111,13 +132,16 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
     else:
         instructions = (
             "Tools for managing a user's Deferno tasks. "
-            "Authenticate with `login` (or set DEFERNO_TOKEN / "
-            "DEFERNO_USERNAME+DEFERNO_PASSWORD env vars), then use "
-            "`whoami` to confirm, `list_tasks` or the `defernowork://tasks` "
-            "resource to index tasks, and `create_task` / `update_task` "
-            "for normal CRUD. Use `split_task` to decompose a task, "
-            "`fold_task` to insert a next step, and `merge_task` to "
-            "roll children back into their parent."
+            "If any tool returns a 401 error, call `start_auth` to begin "
+            "authentication — it returns a URL for the user to open in "
+            "their browser. After they sign in, ask them to paste the "
+            "code shown on screen and call `complete_auth` with it. "
+            "Use `whoami` to confirm auth, `list_tasks` or the "
+            "`defernowork://tasks` resource to index tasks, and "
+            "`create_task` / `update_task` for normal CRUD. Use "
+            "`split_task` to decompose a task, `fold_task` to insert "
+            "a next step, and `merge_task` to roll children back into "
+            "their parent."
         )
 
     mcp = FastMCP(
@@ -127,49 +151,66 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
     )
 
     # ------------------------------------------------------------------ auth
-    # login / logout / register are only useful for the stdio transport where
-    # the user hasn't pre-configured credentials.  On the HTTP transport,
-    # authentication is handled entirely by the Authorization: Bearer header —
-    # exposing these tools causes clients to prompt the user for a password.
+    # start_auth / complete_auth are only exposed on stdio transport.
+    # On HTTP transport auth is handled entirely by the Authorization header.
     if not http_transport:
         @mcp.tool()
-        async def login(username: str, password: str) -> str:
-            """Authenticate with Deferno and store the session token.
+        async def start_auth() -> str:
+            """Begin the Deferno authentication flow.
 
-            Returns the authenticated user's id and username on success.
+            Returns a URL for the user to open in their browser and a
+            ``session_id`` needed by ``complete_auth``.  After the user
+            signs in, they will see a short code to paste back here.
             """
-            async with _get_client() as client:
+            async with _get_anon_client() as client:
                 try:
-                    result = await client.login(username, password)
+                    result = await client.cli_init()
                 except DefernoError as exc:
                     return _format_error(exc)
+            return json.dumps({
+                "auth_url": result["auth_url"],
+                "session_id": result["session_id"],
+                "instructions": (
+                    "Show the auth_url to the user and ask them to open it "
+                    "in their browser. After they sign in, they will see a "
+                    "short code. Ask the user to paste that code, then call "
+                    "complete_auth with the session_id and code."
+                ),
+            })
+
+        @mcp.tool()
+        async def complete_auth(session_id: str, code: str) -> str:
+            """Finish authentication by exchanging the browser code for a token.
+
+            ``session_id`` comes from the ``start_auth`` response.
+            ``code`` is the short code the user copied from their browser
+            after signing in.  Saves credentials to disk so future
+            sessions authenticate automatically.
+            """
+            async with _get_anon_client() as client:
+                try:
+                    result = await client.cli_verify(session_id, code)
+                except DefernoError as exc:
+                    return _format_error(exc)
+            token = result["token"]
             user = result.get("user", {})
-            token = result.get("token")
-            return json.dumps({"user": user, "token": token, "authenticated": True})
+            username = user.get("username", "")
+            base_url = client.base_url
+            save_credentials(token, username, base_url)
+            return json.dumps({"authenticated": True, "username": username})
 
         @mcp.tool()
         async def logout() -> str:
-            """Invalidate the current session token."""
+            """Log out and remove saved credentials."""
             async with _get_client() as client:
                 try:
                     await client.logout()
                 except DefernoError as exc:
+                    # Still clear local credentials even if the server call fails
+                    clear_credentials()
                     return _format_error(exc)
-            return "logged out"
-
-        @mcp.tool()
-        async def register(username: str, password: str, invite_code: str | None = None) -> str:
-            """Create a new Deferno user account.
-
-            ``invite_code`` is required if the server is configured with a
-            registration code (most deployments are).
-            """
-            async with _get_client() as client:
-                try:
-                    result = await client.register(username, password, invite_code=invite_code)
-                except DefernoError as exc:
-                    return _format_error(exc)
-            return json.dumps(result)
+            clear_credentials()
+            return "Logged out and credentials removed."
 
     @mcp.tool()
     async def whoami() -> str:

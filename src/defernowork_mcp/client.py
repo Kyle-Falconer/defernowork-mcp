@@ -52,27 +52,12 @@ class DefernoClient:
         return self._base_url
 
     async def _ensure_authed(self) -> None:
-        """Populate ``self._token`` lazily from env credentials if needed.
-
-        Supports two env-var flows without forcing the caller to run an
-        explicit bootstrap pass:
-
-        * ``DEFERNO_TOKEN`` — already handled at construction.
-        * ``DEFERNO_USERNAME`` + ``DEFERNO_PASSWORD`` — logged in here on
-          the first authed request, so it happens inside the FastMCP event
-          loop (avoids cross-loop httpx clients).
-        """
         if self._token:
-            return
-        username = os.environ.get("DEFERNO_USERNAME")
-        password = os.environ.get("DEFERNO_PASSWORD")
-        if username and password:
-            await self.login(username, password)
             return
         raise DefernoError(
             401,
-            "not authenticated — call `login` first, set DEFERNO_TOKEN, "
-            "or provide DEFERNO_USERNAME and DEFERNO_PASSWORD",
+            "not authenticated — call the `start_auth` tool to begin the "
+            "login flow, or run `defernowork-mcp auth` in your terminal",
         )
 
     async def _request(
@@ -110,6 +95,29 @@ class DefernoClient:
         return payload
 
     # ------------------------------------------------------------------ auth
+    async def cli_init(self) -> dict[str, Any]:
+        """Start a CLI authentication session.
+
+        Returns ``{session_id, auth_url}`` from the backend.  The caller
+        should show ``auth_url`` to the user, then pass ``session_id`` and
+        the code the user sees in their browser to :meth:`cli_verify`.
+        """
+        return await self._request("POST", "/auth/cli/init", authed=False)
+
+    async def cli_verify(self, session_id: str, code: str) -> dict[str, Any]:
+        """Exchange a CLI auth code for a bearer token.
+
+        Returns ``{token, user}`` and stores the token in ``self._token``.
+        """
+        result = await self._request(
+            "POST",
+            "/auth/cli/verify",
+            authed=False,
+            json_body={"session_id": session_id, "code": code},
+        )
+        self._token = result["token"]
+        return result
+
     async def register(
         self, username: str, password: str, invite_code: str | None = None
     ) -> dict[str, Any]:

@@ -33,10 +33,10 @@ client and every tool and resource below becomes available.
 
 | URI                           | Content                        |
 | ----------------------------- | ------------------------------ |
-| `deferno://tasks`             | All tasks for the current user |
-| `deferno://tasks/today`       | Today's prioritized tasks      |
-| `deferno://tasks/mood-history`| Mood log for finished tasks    |
-| `deferno://task/{task_id}`    | A single task by UUID          |
+| `defernowork://tasks`         | All tasks for the current user |
+| `defernowork://tasks/today`   | Today's prioritized tasks      |
+| `defernowork://tasks/mood-history` | Mood log for finished tasks |
+| `defernowork://task/{task_id}` | A single task by UUID         |
 
 ## Install
 
