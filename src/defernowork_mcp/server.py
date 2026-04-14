@@ -50,6 +50,10 @@ DEFAULT_BASE_URL = "http://127.0.0.1:3000"
 _request_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "deferno_request_token", default=None
 )
+# Per-request MCP session ID (from Mcp-Session-Id header).
+_mcp_session_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "mcp_session_id", default=None
+)
 
 _UNSET = object()
 """Sentinel for 'caller did not provide this argument'.
@@ -93,10 +97,14 @@ def _get_client() -> DefernoClient:
     base_url = _resolve_base_url()
 
     if _http_transport_mode:
-        mcp_token = _request_token.get()
-        # Look up the Deferno token cached from a prior complete_auth call.
-        deferno_token = _session_token_cache.get(mcp_token or "") if mcp_token else None
-        return DefernoClient(base_url=base_url, token=deferno_token)
+        # Try per-request Bearer token first (if client sends Deferno token directly).
+        token = _request_token.get()
+        if not token:
+            # Look up cached Deferno token by MCP session ID.
+            sid = _mcp_session_id.get()
+            if sid:
+                token = _session_token_cache.get(sid)
+        return DefernoClient(base_url=base_url, token=token)
 
     # stdio mode: single user, safe to check env and disk.
     token = os.environ.get("DEFERNO_TOKEN")
@@ -109,9 +117,13 @@ def _get_client() -> DefernoClient:
 
 def _cache_deferno_token(deferno_token: str) -> None:
     """Cache a Deferno token for the current MCP session (HTTP mode only)."""
-    mcp_token = _request_token.get()
-    if mcp_token and _http_transport_mode:
-        _session_token_cache[mcp_token] = deferno_token
+    if not _http_transport_mode:
+        return
+    # Prefer MCP session ID, fall back to Bearer token.
+    key = _mcp_session_id.get() or _request_token.get()
+    if key:
+        _session_token_cache[key] = deferno_token
+        logger.info("Cached Deferno token for MCP session %s", key[:12])
 
 
 def _get_anon_client() -> DefernoClient:
@@ -243,11 +255,14 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
                 headers: dict[bytes, bytes] = dict(scope.get("headers", []))
                 auth = headers.get(b"authorization", b"").decode()
                 token = auth.removeprefix("Bearer ").strip() or None
+                session_id = headers.get(b"mcp-session-id", b"").decode() or None
                 tok = _request_token.set(token)
+                sid = _mcp_session_id.set(session_id)
                 try:
                     await self.app(scope, receive, send)
                 finally:
                     _request_token.reset(tok)
+                    _mcp_session_id.reset(sid)
             else:
                 await self.app(scope, receive, send)
 
