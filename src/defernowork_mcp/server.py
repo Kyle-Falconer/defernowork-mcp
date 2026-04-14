@@ -71,15 +71,20 @@ def _resolve_base_url() -> str:
 
 _http_transport_mode = False
 
+# In HTTP mode, map MCP session token → Deferno bearer token.
+# This is in-memory only — never touches disk.  Each MCP client
+# session gets its own Deferno identity after calling complete_auth.
+_session_token_cache: dict[str, str] = {}
+
 
 def _get_client() -> DefernoClient:
     """Return a DefernoClient for the current request/session.
 
     Token resolution order:
     **HTTP transport (remote/shared server):**
-      1. Per-request Bearer header ONLY — no fallback.
-         The credential file is on the shared server filesystem and must
-         never be used, as it would leak one user's token to another.
+      1. Per-request MCP Bearer token → look up cached Deferno token.
+         Never falls back to env vars or credential files on the shared
+         server filesystem.
 
     **stdio transport (local single-user):**
       1. ``DEFERNO_TOKEN`` env var
@@ -87,12 +92,11 @@ def _get_client() -> DefernoClient:
     """
     base_url = _resolve_base_url()
 
-    # In HTTP mode, ONLY use the per-request token from the Authorization
-    # header.  Never fall back to env vars or disk — those are shared across
-    # all users on the server.
     if _http_transport_mode:
-        token = _request_token.get()
-        return DefernoClient(base_url=base_url, token=token)
+        mcp_token = _request_token.get()
+        # Look up the Deferno token cached from a prior complete_auth call.
+        deferno_token = _session_token_cache.get(mcp_token or "") if mcp_token else None
+        return DefernoClient(base_url=base_url, token=deferno_token)
 
     # stdio mode: single user, safe to check env and disk.
     token = os.environ.get("DEFERNO_TOKEN")
@@ -101,6 +105,13 @@ def _get_client() -> DefernoClient:
         if creds:
             token = creds.get("token")
     return DefernoClient(base_url=base_url, token=token)
+
+
+def _cache_deferno_token(deferno_token: str) -> None:
+    """Cache a Deferno token for the current MCP session (HTTP mode only)."""
+    mcp_token = _request_token.get()
+    if mcp_token and _http_transport_mode:
+        _session_token_cache[mcp_token] = deferno_token
 
 
 def _get_anon_client() -> DefernoClient:

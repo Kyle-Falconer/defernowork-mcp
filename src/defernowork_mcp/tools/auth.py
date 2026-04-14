@@ -60,10 +60,11 @@ def register(
         user = result.get("user", {})
         username = user.get("username", "")
         base_url = client.base_url
-        # Only save credentials in stdio mode (single-user local machine).
-        # In HTTP mode the server is shared — writing tokens to the
-        # container filesystem leaks them to other users.
-        if not _server_mod._http_transport_mode:
+        # In HTTP mode, cache the token in memory keyed by MCP session.
+        # In stdio mode, save to disk for persistence across restarts.
+        if _server_mod._http_transport_mode:
+            _server_mod._cache_deferno_token(token)
+        else:
             save_credentials(token, username, base_url)
         return json.dumps({"authenticated": True, "username": username})
 
