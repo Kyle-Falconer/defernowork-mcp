@@ -73,12 +73,18 @@ class DefernoClient:
             await self._ensure_authed()
             headers["authorization"] = f"Bearer {self._token}"
 
-        response = await self._client.request(
-            method,
-            path,
-            headers=headers,
-            json=json_body,
-        )
+        try:
+            response = await self._client.request(
+                method,
+                path,
+                headers=headers,
+                json=json_body,
+            )
+        except httpx.TimeoutException:
+            raise DefernoError(504, "request timed out")
+        except httpx.RequestError as exc:
+            raise DefernoError(502, f"network error: {exc}")
+
         if response.status_code == 204 or not response.content:
             if 200 <= response.status_code < 300:
                 return None
@@ -165,8 +171,13 @@ class DefernoClient:
     async def fold_task(self, task_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", f"/tasks/{task_id}/fold", json_body=payload)
 
-    async def daily_tasks(self) -> list[dict[str, Any]]:
-        return await self._request("GET", "/tasks/today")
+    async def move_task(
+        self, task_id: str, new_parent_id: str | None, position: int | None = None
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"new_parent_id": new_parent_id}
+        if position is not None:
+            body["position"] = position
+        return await self._request("POST", f"/tasks/{task_id}/move", json_body=body)
 
     # -------------------------------------------------------------- daily plan
     async def get_daily_plan(self, date: str | None = None) -> list[dict[str, Any]]:

@@ -78,9 +78,21 @@ def _get_anon_client() -> DefernoClient:
     return DefernoClient(base_url=base_url)
 
 
+_UNSET = object()
+"""Sentinel for 'caller did not provide this argument'.
+
+Using this instead of None lets us distinguish between 'clear the field'
+(explicit None) and 'don't touch the field' (not provided / _UNSET).
+"""
+
+
 def _compact(payload: dict[str, Any]) -> dict[str, Any]:
-    """Drop None-valued keys so PATCH/POST bodies stay minimal."""
-    return {k: v for k, v in payload.items() if v is not None}
+    """Drop _UNSET-valued keys so POST/PATCH bodies stay minimal.
+
+    Explicit ``None`` is preserved (sent as JSON null) so the backend
+    can distinguish 'clear this field' from 'leave it unchanged'.
+    """
+    return {k: v for k, v in payload.items() if v is not _UNSET}
 
 
 def _format_error(exc: DefernoError) -> str:
@@ -283,21 +295,25 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
     @mcp.tool()
     async def update_task(
         task_id: str,
-        title: str | None = None,
-        description: str | None = None,
-        status: str | None = None,
-        labels: list[str] | None = None,
-        assignee: str | None = None,
-        complete_by: str | None = None,
-        productive: float | None = None,
-        desire: float | None = None,
-        recurrence: dict[str, Any] | None = None,
+        title: str | None = _UNSET,
+        description: str | None = _UNSET,
+        status: str | None = _UNSET,
+        labels: list[str] | None = _UNSET,
+        assignee: str | None = _UNSET,
+        complete_by: str | None = _UNSET,
+        productive: float | None = _UNSET,
+        desire: float | None = _UNSET,
+        recurrence: dict[str, Any] | None = _UNSET,
     ) -> str:
         """Patch mutable fields on a task.
 
         ``status`` must be one of ``open``, ``in-progress``, ``done``,
         ``dropped``, ``pruned``. The backend rejects completing a task
         while any of its children are still active.
+
+        Pass ``None`` explicitly to clear a field (e.g. ``complete_by=None``
+        removes the deadline). Omitting a parameter leaves it unchanged.
+
         ``recurrence`` sets or clears a repeat schedule (see ``create_task``).
         """
         payload = _compact(
@@ -406,17 +422,23 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
         return json.dumps(result)
 
     @mcp.tool()
-    async def get_daily_tasks() -> str:
-        """Return today's curated daily plan.
+    async def move_task(
+        task_id: str,
+        new_parent_id: str | None = None,
+        position: int | None = None,
+    ) -> str:
+        """Move a task to a different parent or reorder within its current parent.
 
-        This is an alias for ``get_daily_plan`` — prefer that tool instead.
+        ``new_parent_id=None`` detaches the task to root level.
+        ``position`` is the insertion index in the target's children list
+        (0 = first). Omit to append at end.
         """
         async with _get_client() as client:
             try:
-                plan = await client.get_daily_plan()
+                task = await client.move_task(task_id, new_parent_id, position)
             except DefernoError as exc:
                 return _format_error(exc)
-        return json.dumps(plan)
+        return json.dumps(task)
 
     # -------------------------------------------------------------- daily plan
     @mcp.tool()
@@ -463,6 +485,20 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
         return json.dumps({"removed": True, "task_id": task_id})
 
     @mcp.tool()
+    async def reorder_plan(task_ids: list[str], date: str | None = None) -> str:
+        """Replace the daily plan ordering with the given task ID list.
+
+        ``task_ids`` is the full ordered list of task UUIDs for the plan.
+        ``date`` defaults to today.
+        """
+        async with _get_client() as client:
+            try:
+                await client.reorder_plan(task_ids, date)
+            except DefernoError as exc:
+                return _format_error(exc)
+        return json.dumps({"reordered": True, "count": len(task_ids)})
+
+    @mcp.tool()
     async def get_mood_history() -> str:
         """Return the user's historical mood-per-task log for finished tasks."""
         async with _get_client() as client:
@@ -480,12 +516,7 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
             tasks = await client.list_tasks()
         return json.dumps(tasks, indent=2)
 
-    @mcp.resource("defernowork://tasks/today")
-    async def today_resource() -> str:
-        """Today's curated daily plan (JSON array)."""
-        async with _get_client() as client:
-            plan = await client.get_daily_plan()
-        return json.dumps(plan, indent=2)
+    # defernowork://tasks/today removed — use defernowork://tasks/plan instead
 
     @mcp.resource("defernowork://tasks/plan")
     async def plan_resource() -> str:
