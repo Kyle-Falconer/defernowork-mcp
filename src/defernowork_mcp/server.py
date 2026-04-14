@@ -69,16 +69,33 @@ def _resolve_base_url() -> str:
     return base_url
 
 
+_http_transport_mode = False
+
+
 def _get_client() -> DefernoClient:
     """Return a DefernoClient for the current request/session.
 
     Token resolution order:
-    1. Per-request Bearer header (HTTP transport)
-    2. ``DEFERNO_TOKEN`` env var
-    3. Saved credentials on disk (``~/.config/defernowork/credentials.json``)
+    **HTTP transport (remote/shared server):**
+      1. Per-request Bearer header ONLY — no fallback.
+         The credential file is on the shared server filesystem and must
+         never be used, as it would leak one user's token to another.
+
+    **stdio transport (local single-user):**
+      1. ``DEFERNO_TOKEN`` env var
+      2. Saved credentials on disk
     """
     base_url = _resolve_base_url()
-    token = _request_token.get() or os.environ.get("DEFERNO_TOKEN")
+
+    # In HTTP mode, ONLY use the per-request token from the Authorization
+    # header.  Never fall back to env vars or disk — those are shared across
+    # all users on the server.
+    if _http_transport_mode:
+        token = _request_token.get()
+        return DefernoClient(base_url=base_url, token=token)
+
+    # stdio mode: single user, safe to check env and disk.
+    token = os.environ.get("DEFERNO_TOKEN")
     if token is None:
         creds = load_credentials()
         if creds:
@@ -105,6 +122,9 @@ def _format_error(exc: DefernoError) -> str:
 
 
 def create_server(http_transport: bool = False) -> FastMCP:
+    global _http_transport_mode
+    _http_transport_mode = http_transport
+
     security_kwargs: dict = {}
     try:
         from mcp.server.transport_security import TransportSecuritySettings

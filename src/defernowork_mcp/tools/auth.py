@@ -8,6 +8,7 @@ from typing import Any, Callable
 from mcp.server.fastmcp import FastMCP
 
 from ..client import DefernoClient, DefernoError
+from .. import server as _server_mod
 from ..credentials import save_credentials, clear_credentials
 
 
@@ -59,7 +60,11 @@ def register(
         user = result.get("user", {})
         username = user.get("username", "")
         base_url = client.base_url
-        save_credentials(token, username, base_url)
+        # Only save credentials in stdio mode (single-user local machine).
+        # In HTTP mode the server is shared — writing tokens to the
+        # container filesystem leaks them to other users.
+        if not _server_mod._http_transport_mode:
+            save_credentials(token, username, base_url)
         return json.dumps({"authenticated": True, "username": username})
 
     @mcp.tool()
