@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+
+from .server import DEFAULT_BASE_URL
 import asyncio
 import sys
 
@@ -18,8 +20,8 @@ def _run_auth(argv: list[str]) -> None:
     )
     parser.add_argument(
         "--base-url",
-        default="http://127.0.0.1:3000",
-        help="Deferno backend URL (default: http://127.0.0.1:3000)",
+        default=DEFAULT_BASE_URL,
+        help=f"Deferno backend URL (default: {DEFAULT_BASE_URL})",
     )
     args = parser.parse_args(argv)
     base_url = args.base_url

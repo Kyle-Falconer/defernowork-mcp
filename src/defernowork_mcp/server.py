@@ -50,6 +50,19 @@ _request_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 
+DEFAULT_BASE_URL = "http://127.0.0.1:3000"
+
+
+def _resolve_base_url() -> str:
+    """Resolve the backend URL from env, saved credentials, or default."""
+    base_url = os.environ.get("DEFERNO_BASE_URL", DEFAULT_BASE_URL)
+    if not os.environ.get("DEFERNO_BASE_URL"):
+        creds = load_credentials()
+        if creds:
+            base_url = creds.get("base_url", base_url)
+    return base_url
+
+
 def _get_client() -> DefernoClient:
     """Return a DefernoClient for the current request/session.
 
@@ -58,24 +71,18 @@ def _get_client() -> DefernoClient:
     2. ``DEFERNO_TOKEN`` env var
     3. Saved credentials on disk (``~/.config/defernowork/credentials.json``)
     """
-    base_url = os.environ.get("DEFERNO_BASE_URL", "http://127.0.0.1:3000")
+    base_url = _resolve_base_url()
     token = _request_token.get() or os.environ.get("DEFERNO_TOKEN")
     if token is None:
         creds = load_credentials()
         if creds:
             token = creds.get("token")
-            if not os.environ.get("DEFERNO_BASE_URL"):
-                base_url = creds.get("base_url", base_url)
     return DefernoClient(base_url=base_url, token=token)
 
 
 def _get_anon_client() -> DefernoClient:
     """Return an unauthenticated DefernoClient (for auth init/verify)."""
-    base_url = os.environ.get("DEFERNO_BASE_URL", "http://127.0.0.1:3000")
-    creds = load_credentials()
-    if creds and not os.environ.get("DEFERNO_BASE_URL"):
-        base_url = creds.get("base_url", base_url)
-    return DefernoClient(base_url=base_url)
+    return DefernoClient(base_url=_resolve_base_url())
 
 
 _UNSET = object()
