@@ -32,6 +32,11 @@ Repository = "https://github.com/Kyle-Falconer/defernowork-mcp"
 http = [
     "uvicorn>=0.30.0",
 ]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "respx>=0.21",
+]
 
 [project.scripts]
 defernowork-mcp = "defernowork_mcp.__main__:main"
@@ -45,6 +50,9 @@ packages = ["src/defernowork_mcp"]
 
 [tool.hatch.version]
 source = "vcs"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [tool.hatch.version.raw-options]
 fallback_version = "0.0.0.dev0"
