@@ -119,16 +119,19 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
 
     instructions = (
         "Tools for managing a user's Deferno tasks. "
-        "If any tool returns a 401 error, call `start_auth` to begin "
-        "authentication — it returns a URL for the user to open in "
-        "their browser. After they sign in, ask them to paste the "
-        "code shown on screen and call `complete_auth` with it. "
-        "Use `whoami` to confirm auth, `list_tasks` or the "
-        "`defernowork://tasks` resource to index tasks, and "
+        "Authentication is handled via the Authorization: Bearer <token> "
+        "header — no login tool call is needed or available. "
+        "Use `whoami` to confirm authentication, `list_tasks` or the "
+        "`defernowork://tasks` resource to index the user's current tasks, and "
         "`create_task` / `update_task` for normal CRUD. Use "
-        "`split_task` to decompose a task, `fold_task` to insert "
-        "a next step, and `merge_task` to roll children back into "
-        "their parent."
+        "`split_task` to decompose a task into two subtasks, `fold_task` to insert "
+        "a next-step task in a sequence, and `merge_task` to roll active children "
+        "back into their parent. "
+        "Use `get_daily_plan` to see today's curated plan (auto-seeded from "
+        "recurring tasks + carried-forward items), `add_to_plan` / "
+        "`remove_from_plan` to manage it. When the user asks about their "
+        "current tasks or what they should work on today, prefer "
+        "`get_daily_plan` over `list_tasks`."
     )
 
     mcp = FastMCP(
@@ -245,6 +248,7 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
         complete_by: str | None = None,
         productive: float | None = None,
         desire: float | None = None,
+        recurrence: dict[str, Any] | None = None,
     ) -> str:
         """Create a new task.
 
@@ -252,6 +256,9 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
         ``parent_id`` attaches the new task as a child of an existing task.
         ``productive`` and ``desire`` are floats in [0, 1] representing how
         productive this task feels and how much the user wants to do it.
+        ``recurrence`` sets a repeat schedule. Use ``{"type": "daily"}``,
+        ``{"type": "every_n_days", "n": 3}``, or
+        ``{"type": "weekly", "days": ["Mon", "Wed", "Fri"]}``.
         """
         payload = _compact(
             {
@@ -263,6 +270,7 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
                 "complete_by": complete_by,
                 "productive": productive,
                 "desire": desire,
+                "recurrence": recurrence,
             }
         )
         async with _get_client() as client:
@@ -283,12 +291,14 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
         complete_by: str | None = None,
         productive: float | None = None,
         desire: float | None = None,
+        recurrence: dict[str, Any] | None = None,
     ) -> str:
         """Patch mutable fields on a task.
 
         ``status`` must be one of ``open``, ``in-progress``, ``done``,
         ``dropped``, ``pruned``. The backend rejects completing a task
         while any of its children are still active.
+        ``recurrence`` sets or clears a repeat schedule (see ``create_task``).
         """
         payload = _compact(
             {
@@ -300,6 +310,7 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
                 "complete_by": complete_by,
                 "productive": productive,
                 "desire": desire,
+                "recurrence": recurrence,
             }
         )
         async with _get_client() as client:
@@ -404,6 +415,50 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
                 return _format_error(exc)
         return json.dumps(daily)
 
+    # -------------------------------------------------------------- daily plan
+    @mcp.tool()
+    async def get_daily_plan(date: str | None = None) -> str:
+        """Return today's curated daily plan.
+
+        The plan auto-seeds from recurring tasks and carries forward
+        incomplete items from yesterday. Done tasks stay in the plan.
+        ``date`` is optional (YYYY-MM-DD); defaults to today.
+        Prefer this over ``get_daily_tasks`` when the user asks what
+        they should work on today.
+        """
+        async with _get_client() as client:
+            try:
+                plan = await client.get_daily_plan(date)
+            except DefernoError as exc:
+                return _format_error(exc)
+        return json.dumps(plan)
+
+    @mcp.tool()
+    async def add_to_plan(task_id: str, date: str | None = None) -> str:
+        """Add a task to the daily plan.
+
+        ``task_id`` is the UUID of an existing task. ``date`` defaults to today.
+        """
+        async with _get_client() as client:
+            try:
+                await client.add_to_plan(task_id, date)
+            except DefernoError as exc:
+                return _format_error(exc)
+        return json.dumps({"added": True, "task_id": task_id})
+
+    @mcp.tool()
+    async def remove_from_plan(task_id: str, date: str | None = None) -> str:
+        """Remove a task from the daily plan.
+
+        ``task_id`` is the UUID of the task to remove. ``date`` defaults to today.
+        """
+        async with _get_client() as client:
+            try:
+                await client.remove_from_plan(task_id, date)
+            except DefernoError as exc:
+                return _format_error(exc)
+        return json.dumps({"removed": True, "task_id": task_id})
+
     @mcp.tool()
     async def get_mood_history() -> str:
         """Return the user's historical mood-per-task log for finished tasks."""
@@ -428,6 +483,13 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
         async with _get_client() as client:
             daily = await client.daily_tasks()
         return json.dumps(daily, indent=2)
+
+    @mcp.resource("defernowork://tasks/plan")
+    async def plan_resource() -> str:
+        """Today's curated daily plan (JSON array)."""
+        async with _get_client() as client:
+            plan = await client.get_daily_plan()
+        return json.dumps(plan, indent=2)
 
     @mcp.resource("defernowork://tasks/mood-history")
     async def mood_history_resource() -> str:

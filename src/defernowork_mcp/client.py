@@ -168,5 +168,28 @@ class DefernoClient:
     async def daily_tasks(self) -> list[dict[str, Any]]:
         return await self._request("GET", "/tasks/today")
 
+    # -------------------------------------------------------------- daily plan
+    async def get_daily_plan(self, date: str | None = None) -> list[dict[str, Any]]:
+        query = f"?date={date}" if date else ""
+        return await self._request("GET", f"/tasks/plan{query}")
+
+    async def add_to_plan(self, task_id: str, date: str | None = None) -> None:
+        body: dict[str, Any] = {"task_id": task_id}
+        if date:
+            body["date"] = date
+        await self._request("POST", "/tasks/plan/add", json_body=body)
+
+    async def remove_from_plan(self, task_id: str, date: str | None = None) -> None:
+        body: dict[str, Any] = {"task_id": task_id}
+        if date:
+            body["date"] = date
+        await self._request("POST", "/tasks/plan/remove", json_body=body)
+
+    async def reorder_plan(self, task_ids: list[str], date: str | None = None) -> None:
+        body: dict[str, Any] = {"task_ids": task_ids}
+        if date:
+            body["date"] = date
+        await self._request("POST", "/tasks/plan/reorder", json_body=body)
+
     async def mood_history(self) -> list[dict[str, Any]]:
         return await self._request("GET", "/tasks/mood-history")
