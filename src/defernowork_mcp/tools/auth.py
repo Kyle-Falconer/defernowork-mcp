@@ -22,9 +22,9 @@ def register(
     async def start_auth() -> str:
         """Begin the Deferno authentication flow.
 
-        Returns a URL for the user to open in their browser and a
-        ``session_id`` needed by ``complete_auth``.  After the user
-        signs in, they will see a short code to paste back here.
+        Returns a URL for the user to open in their browser.
+        The user authenticates via Kanidm (or legacy password),
+        then sees a short code to paste back here.
         """
         async with get_anon_client() as client:
             try:
@@ -36,8 +36,9 @@ def register(
             "session_id": result["session_id"],
             "instructions": (
                 "Show the auth_url to the user and ask them to open it "
-                "in their browser. After they sign in, they will see a "
-                "short code. Ask the user to paste that code, then call "
+                "in their browser. They will authenticate via Kanidm "
+                "(password, passkey, or MFA). After approving, they will "
+                "see a short code. Ask them to paste that code, then call "
                 "complete_auth with the session_id and code."
             ),
         })
@@ -48,8 +49,7 @@ def register(
 
         ``session_id`` comes from the ``start_auth`` response.
         ``code`` is the short code the user copied from their browser
-        after signing in.  Saves credentials to disk so future
-        sessions authenticate automatically.
+        after signing in via Kanidm.
         """
         async with get_anon_client() as client:
             try:
@@ -60,8 +60,6 @@ def register(
         user = result.get("user", {})
         username = user.get("username", "")
         base_url = client.base_url
-        # In HTTP mode, cache the token in memory keyed by MCP session.
-        # In stdio mode, save to disk for persistence across restarts.
         if _server_mod._http_transport_mode:
             _server_mod._cache_deferno_token(token)
         else:

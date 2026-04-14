@@ -101,13 +101,30 @@ class DefernoClient:
         return payload
 
     # ------------------------------------------------------------------ auth
-    async def cli_init(self) -> dict[str, Any]:
-        """Start a CLI authentication session.
+    async def oidc_login(self) -> dict[str, Any]:
+        """Start an OIDC login flow.
 
-        Returns ``{session_id, auth_url}`` from the backend.  The caller
-        should show ``auth_url`` to the user, then pass ``session_id`` and
-        the code the user sees in their browser to :meth:`cli_verify`.
+        Returns ``{authorize_url, state}`` — the caller should show
+        ``authorize_url`` to the user to open in their browser.
         """
+        return await self._request("GET", "/auth/oidc/login", authed=False)
+
+    async def oidc_callback(self, state: str, code: str) -> dict[str, Any]:
+        """Exchange an OIDC callback code for a session token.
+
+        Returns ``{token, user}`` or ``{needs_migration, username, kanidm_id}``.
+        """
+        result = await self._request(
+            "GET",
+            f"/auth/oidc/callback?state={state}&code={code}",
+            authed=False,
+        )
+        if "token" in result:
+            self._token = result["token"]
+        return result
+
+    async def cli_init(self) -> dict[str, Any]:
+        """Legacy: Start a CLI authentication session."""
         return await self._request("POST", "/auth/cli/init", authed=False)
 
     async def cli_verify(self, session_id: str, code: str) -> dict[str, Any]:

@@ -167,8 +167,11 @@ def create_server(http_transport: bool = False) -> FastMCP:
 
     instructions = (
         "Tools for managing a user's Deferno tasks. "
-        "Authentication is handled via the Authorization: Bearer <token> "
-        "header — no login tool call is needed or available. "
+        "Authentication is via Kanidm (OIDC). If any tool returns a 401, "
+        "call `start_auth` to begin the login flow — it returns a URL "
+        "for the user to open in their browser where they authenticate "
+        "via Kanidm (password, passkey, or MFA). After they approve, "
+        "they see a code to paste back; call `complete_auth` with it. "
         "Use `whoami` to confirm authentication, `list_tasks` or the "
         "`defernowork://tasks` resource to index the user's current tasks, and "
         "`create_task` / `update_task` for normal CRUD. Use "
@@ -256,6 +259,12 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
                 auth = headers.get(b"authorization", b"").decode()
                 token = auth.removeprefix("Bearer ").strip() or None
                 session_id = headers.get(b"mcp-session-id", b"").decode() or None
+                logger.warning(
+                    "MCP request: path=%s auth=%s mcp_session=%s",
+                    scope.get("path", "?"),
+                    "yes" if token else "no",
+                    session_id[:12] if session_id else "none",
+                )
                 tok = _request_token.set(token)
                 sid = _mcp_session_id.set(session_id)
                 try:
