@@ -26,17 +26,21 @@ client and every tool and resource below becomes available.
 | `split_task`        | Decompose a task into two child tasks                       |
 | `fold_task`         | Insert a next-step task into the sibling chain              |
 | `merge_task`        | Roll a parent's active children back into the parent        |
-| `get_daily_tasks`   | Today's prioritized tasks with urgency reasons              |
+| `get_daily_tasks`   | Today's auto-scored prioritized tasks with urgency reasons  |
+| `get_daily_plan`    | Today's curated daily plan (recurring + carried forward)    |
+| `add_to_plan`       | Add a task to the daily plan by UUID                        |
+| `remove_from_plan`  | Remove a task from the daily plan                           |
 | `get_mood_history`  | Mood log for finished tasks                                 |
 
 **Resources** (readable by MCP clients that index resources)
 
 | URI                                | Content                        |
 | ---------------------------------- | ------------------------------ |
-| `defernowork://tasks`              | All tasks for the current user |
-| `defernowork://tasks/today`        | Today's prioritized tasks      |
-| `defernowork://tasks/mood-history` | Mood log for finished tasks    |
-| `defernowork://task/{task_id}`     | A single task by UUID          |
+| `defernowork://tasks`              | All tasks for the current user  |
+| `defernowork://tasks/today`        | Today's auto-scored priorities  |
+| `defernowork://tasks/plan`         | Today's curated daily plan      |
+| `defernowork://tasks/mood-history` | Mood log for finished tasks     |
+| `defernowork://task/{task_id}`     | A single task by UUID           |
 
 ## Install
 
