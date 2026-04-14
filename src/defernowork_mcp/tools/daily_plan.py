@@ -71,3 +71,18 @@ def register(
             except DefernoError as exc:
                 return format_error(exc)
         return json.dumps({"reordered": True, "count": len(task_ids)})
+
+    @mcp.tool()
+    async def get_calendar_events(start: str, end: str) -> str:
+        """Query calendar events for a date range.
+
+        Returns recurring task instances (expanded from RRULE schedules)
+        plus one-off tasks with due dates in the range.
+        ``start`` and ``end`` are YYYY-MM-DD strings.
+        """
+        async with get_client() as client:
+            try:
+                events = await client.get_calendar_events(start, end)
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps(events)

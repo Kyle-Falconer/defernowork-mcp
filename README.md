@@ -31,6 +31,7 @@ client and every tool and resource below becomes available.
 | `add_to_plan`       | Add a task to the daily plan by UUID                        |
 | `remove_from_plan`  | Remove a task from the daily plan                           |
 | `reorder_plan`      | Replace the daily plan ordering                             |
+| `get_calendar_events` | Query recurring + one-off events for a date range         |
 | `get_mood_history`  | Mood log for finished tasks                                 |
 
 **Resources** (readable by MCP clients that index resources)

@@ -179,6 +179,11 @@ class DefernoClient:
             body["position"] = position
         return await self._request("POST", f"/tasks/{task_id}/move", json_body=body)
 
+    async def get_calendar_events(
+        self, start: str, end: str
+    ) -> list[dict[str, Any]]:
+        return await self._request("GET", f"/tasks/calendar?start={start}&end={end}")
+
     # -------------------------------------------------------------- daily plan
     async def get_daily_plan(self, date: str | None = None) -> list[dict[str, Any]]:
         query = f"?date={date}" if date else ""
