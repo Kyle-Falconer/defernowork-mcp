@@ -407,13 +407,16 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
 
     @mcp.tool()
     async def get_daily_tasks() -> str:
-        """Return today's prioritized task list with urgency scores and reasons."""
+        """Return today's curated daily plan.
+
+        This is an alias for ``get_daily_plan`` — prefer that tool instead.
+        """
         async with _get_client() as client:
             try:
-                daily = await client.daily_tasks()
+                plan = await client.get_daily_plan()
             except DefernoError as exc:
                 return _format_error(exc)
-        return json.dumps(daily)
+        return json.dumps(plan)
 
     # -------------------------------------------------------------- daily plan
     @mcp.tool()
@@ -479,10 +482,10 @@ def create_server(http_transport: bool = False) -> FastMCP:  # noqa: C901
 
     @mcp.resource("defernowork://tasks/today")
     async def today_resource() -> str:
-        """Today's prioritized tasks (JSON array)."""
+        """Today's curated daily plan (JSON array)."""
         async with _get_client() as client:
-            daily = await client.daily_tasks()
-        return json.dumps(daily, indent=2)
+            plan = await client.get_daily_plan()
+        return json.dumps(plan, indent=2)
 
     @mcp.resource("defernowork://tasks/plan")
     async def plan_resource() -> str:
