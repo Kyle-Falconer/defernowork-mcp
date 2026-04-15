@@ -355,11 +355,22 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
         # /.well-known/oauth-authorization-server.  Some MCP clients
         # (including Claude.ai's connector) look for OIDC discovery
         # instead of RFC 8414 AS metadata.
+        mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://deferno.work/mcp")
+        _oidc_metadata = {
+            "issuer": mcp_public_url,
+            "authorization_endpoint": f"{mcp_public_url}/authorize",
+            "token_endpoint": f"{mcp_public_url}/token",
+            "registration_endpoint": f"{mcp_public_url}/register",
+            "revocation_endpoint": f"{mcp_public_url}/revoke",
+            "scopes_supported": ["tasks:read", "tasks:write", "plan:read", "plan:write", "profile:read"],
+            "response_types_supported": ["code"],
+            "grant_types_supported": ["authorization_code", "refresh_token"],
+            "token_endpoint_auth_methods_supported": ["client_secret_post", "client_secret_basic"],
+            "code_challenge_methods_supported": ["S256"],
+        }
+
         async def oidc_discovery_alias(request):
-            for route in mcp_asgi.routes:
-                if hasattr(route, 'path') and route.path == "/.well-known/oauth-authorization-server":
-                    return await route.endpoint(request)
-            return JSONResponse({"error": "not configured"}, status_code=404)
+            return JSONResponse(_oidc_metadata)
 
         if isinstance(mcp_asgi, Starlette):
             mcp_asgi.routes.insert(0,
