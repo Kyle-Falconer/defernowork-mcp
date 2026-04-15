@@ -103,18 +103,21 @@ def _get_client() -> DefernoClient:
         if not token:
             # Look up cached Deferno token by MCP session ID.
             sid = _mcp_session_id.get()
+            logger.warning(
+                "_get_client: sid=%s cache_keys=%s cache_size=%d",
+                sid[:12] if sid else "None",
+                list(_session_token_cache.keys())[:5],
+                len(_session_token_cache),
+            )
             if sid:
                 token = _session_token_cache.get(sid)
                 if not token:
-                    # New session after reconnect — if there's exactly one
-                    # cached token, it's safe to carry forward.  Multiple
-                    # distinct tokens means multiple users, so we can't
-                    # guess which one reconnected.
                     unique_tokens = set(_session_token_cache.values())
                     if len(unique_tokens) == 1:
                         token = next(iter(unique_tokens))
                         _session_token_cache[sid] = token
-                        logger.info("Re-associated token with new MCP session %s", sid[:12])
+                        logger.warning("Re-associated token with new MCP session %s", sid[:12])
+        logger.warning("_get_client: resolved token=%s", "yes" if token else "None")
         return DefernoClient(base_url=base_url, token=token)
 
     # stdio mode: single user, safe to check env and disk.
@@ -129,12 +132,22 @@ def _get_client() -> DefernoClient:
 def _cache_deferno_token(deferno_token: str) -> None:
     """Cache a Deferno token for the current MCP session (HTTP mode only)."""
     if not _http_transport_mode:
+        logger.warning("_cache_deferno_token: not in HTTP mode, skipping")
         return
-    # Prefer MCP session ID, fall back to Bearer token.
-    key = _mcp_session_id.get() or _request_token.get()
+    sid = _mcp_session_id.get()
+    bearer = _request_token.get()
+    key = sid or bearer
+    logger.warning(
+        "_cache_deferno_token: sid=%s bearer=%s key=%s",
+        sid[:12] if sid else "None",
+        "yes" if bearer else "None",
+        key[:12] if key else "None",
+    )
     if key:
         _session_token_cache[key] = deferno_token
-        logger.info("Cached Deferno token for MCP session %s", key[:12])
+        logger.warning("Cached Deferno token for session %s (cache size: %d)", key[:12], len(_session_token_cache))
+    else:
+        logger.warning("_cache_deferno_token: NO KEY — token not cached!")
 
 
 def _get_anon_client() -> DefernoClient:
