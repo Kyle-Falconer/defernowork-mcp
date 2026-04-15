@@ -81,6 +81,7 @@ _http_transport_mode = False
 _session_token_cache: dict[str, str] = {}
 
 
+
 def _get_client() -> DefernoClient:
     """Return a DefernoClient for the current request/session.
 
@@ -104,6 +105,16 @@ def _get_client() -> DefernoClient:
             sid = _mcp_session_id.get()
             if sid:
                 token = _session_token_cache.get(sid)
+                if not token:
+                    # New session after reconnect — if there's exactly one
+                    # cached token, it's safe to carry forward.  Multiple
+                    # distinct tokens means multiple users, so we can't
+                    # guess which one reconnected.
+                    unique_tokens = set(_session_token_cache.values())
+                    if len(unique_tokens) == 1:
+                        token = next(iter(unique_tokens))
+                        _session_token_cache[sid] = token
+                        logger.info("Re-associated token with new MCP session %s", sid[:12])
         return DefernoClient(base_url=base_url, token=token)
 
     # stdio mode: single user, safe to check env and disk.
