@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Callable
+from typing import Awaitable, Callable
 
 from mcp.server.fastmcp import Context, FastMCP
 
@@ -12,7 +12,7 @@ from ..client import DefernoClient, DefernoError
 
 def register(
     mcp: FastMCP,
-    get_client: Callable[..., DefernoClient],
+    get_client: Callable[..., Awaitable[DefernoClient]],
     format_error: Callable[[DefernoError], str],
 ) -> None:
     @mcp.tool()
@@ -25,7 +25,7 @@ def register(
         Prefer this over ``list_tasks`` when the user asks what
         they should work on today.
         """
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 plan = await client.get_daily_plan(date)
             except DefernoError as exc:
@@ -38,7 +38,7 @@ def register(
 
         ``task_id`` is the UUID of an existing task. ``date`` defaults to today.
         """
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 await client.add_to_plan(task_id, date)
             except DefernoError as exc:
@@ -51,7 +51,7 @@ def register(
 
         ``task_id`` is the UUID of the task to remove. ``date`` defaults to today.
         """
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 await client.remove_from_plan(task_id, date)
             except DefernoError as exc:
@@ -65,7 +65,7 @@ def register(
         ``task_ids`` is the full ordered list of task UUIDs for the plan.
         ``date`` defaults to today.
         """
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 await client.reorder_plan(task_ids, date)
             except DefernoError as exc:
@@ -80,7 +80,7 @@ def register(
         plus one-off tasks with due dates in the range.
         ``start`` and ``end`` are YYYY-MM-DD strings.
         """
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 events = await client.get_calendar_events(start, end)
             except DefernoError as exc:

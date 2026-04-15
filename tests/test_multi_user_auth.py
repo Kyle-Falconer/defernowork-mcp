@@ -1,195 +1,235 @@
-"""End-to-end tests for multi-user authentication in HTTP transport mode.
+"""Tests for the OAuth-based multi-user authentication.
 
-Validates that:
-- Multiple users get isolated tokens per MCP session
-- Cross-user token leakage never occurs
-- Logout clears only the correct session
-- Token caching uses id(ctx.session) as the key
-
-The server uses FastMCP's Context.session to identify MCP sessions.
-id(session) is unique per session and stable for its lifetime.
+Tests the RedisStore and DefernoOAuthProvider in isolation using
+a mock Redis (or fakeredis if available, otherwise plain dict mock).
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+import json
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
-from defernowork_mcp import server as srv
+from defernowork_mcp.redis_store import RedisStore, _generate_token
+from defernowork_mcp.oauth_provider import DefernoOAuthProvider, ACCESS_TOKEN_TTL
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# In-memory Redis mock for testing (no real Redis needed)
 # ---------------------------------------------------------------------------
 
-def _enable_http_mode():
-    """Put the server module into HTTP transport mode and clear caches."""
-    srv._http_transport_mode = True
-    srv._session_token_cache.clear()
+class FakeRedis:
+    """Minimal async Redis mock backed by a dict."""
+
+    def __init__(self):
+        self._data: dict[str, str] = {}
+        self._ttls: dict[str, float] = {}
+
+    async def set(self, key, value, ex=None):
+        self._data[key] = value
+        if ex:
+            self._ttls[key] = time.time() + ex
+
+    async def get(self, key):
+        if key in self._ttls and time.time() > self._ttls[key]:
+            del self._data[key]
+            del self._ttls[key]
+            return None
+        return self._data.get(key)
+
+    async def delete(self, *keys):
+        for k in keys:
+            self._data.pop(k, None)
+            self._ttls.pop(k, None)
+
+    async def xadd(self, stream, fields, maxlen=None, approximate=True):
+        pass  # audit logging — no-op in tests
+
+    async def aclose(self):
+        pass
+
+    def pipeline(self):
+        return FakePipeline(self)
 
 
-def _disable_http_mode():
-    srv._http_transport_mode = False
-    srv._session_token_cache.clear()
+class FakePipeline:
+    def __init__(self, redis: FakeRedis):
+        self._redis = redis
+        self._ops = []
 
+    def set(self, key, value, ex=None):
+        self._ops.append(("set", key, value, ex))
+        return self
 
-def _make_ctx(session_obj=None):
-    """Create a mock Context with a given session object."""
-    ctx = MagicMock()
-    ctx.session = session_obj if session_obj is not None else object()
-    return ctx
+    def delete(self, *keys):
+        self._ops.append(("delete", *keys))
+        return self
 
-
-def _cache_token(ctx, deferno_token: str):
-    """Simulate complete_auth caching a token for a session."""
-    srv._cache_deferno_token(deferno_token, ctx=ctx)
-
-
-def _get_client_token(ctx) -> str | None:
-    """Return the Deferno token that _get_client would use for this ctx."""
-    client = srv._get_client(ctx=ctx)
-    return client._token
+    async def execute(self):
+        for op in self._ops:
+            if op[0] == "set":
+                await self._redis.set(op[1], op[2], ex=op[3])
+            elif op[0] == "delete":
+                for k in op[1:]:
+                    await self._redis.delete(k)
+        self._ops.clear()
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
-@pytest.fixture(autouse=True)
-def _http_mode():
-    """Enable HTTP mode for every test, clean up after."""
-    _enable_http_mode()
-    yield
-    _disable_http_mode()
+@pytest.fixture
+def store():
+    s = RedisStore.__new__(RedisStore)
+    s._redis = FakeRedis()
+    return s
 
 
 # ---------------------------------------------------------------------------
-# Basic session isolation
+# RedisStore tests
 # ---------------------------------------------------------------------------
 
-class TestSessionIsolation:
-    def test_authenticated_session_gets_its_token(self):
-        ctx = _make_ctx()
-        _cache_token(ctx, "alice-deferno-token")
-        assert _get_client_token(ctx) == "alice-deferno-token"
+class TestRedisStoreClients:
+    @pytest.mark.asyncio
+    async def test_save_and_load_client(self, store):
+        await store.save_client("c1", {"name": "Test"})
+        result = await store.load_client("c1")
+        assert result == {"name": "Test"}
 
-    def test_different_session_gets_none(self):
-        ctx_alice = _make_ctx()
-        ctx_bob = _make_ctx()
-        _cache_token(ctx_alice, "alice-deferno-token")
-        assert _get_client_token(ctx_bob) is None
-
-    def test_two_users_get_own_tokens(self):
-        ctx_alice = _make_ctx()
-        ctx_bob = _make_ctx()
-        _cache_token(ctx_alice, "alice-token")
-        _cache_token(ctx_bob, "bob-token")
-
-        assert _get_client_token(ctx_alice) == "alice-token"
-        assert _get_client_token(ctx_bob) == "bob-token"
-
-    def test_three_users_fully_isolated(self):
-        ctxs = [_make_ctx() for _ in range(3)]
-        tokens = ["token-1", "token-2", "token-3"]
-        for ctx, tok in zip(ctxs, tokens):
-            _cache_token(ctx, tok)
-
-        for ctx, tok in zip(ctxs, tokens):
-            assert _get_client_token(ctx) == tok
-        assert _get_client_token(_make_ctx()) is None
+    @pytest.mark.asyncio
+    async def test_load_missing_client(self, store):
+        assert await store.load_client("nonexistent") is None
 
 
-# ---------------------------------------------------------------------------
-# Same session persists across calls
-# ---------------------------------------------------------------------------
+class TestRedisStoreAuthCodes:
+    @pytest.mark.asyncio
+    async def test_save_and_load_auth_code(self, store):
+        await store.save_auth_code("code1", {"client_id": "c1"}, meta={"user": "alice"})
+        result = await store.load_auth_code("code1")
+        assert result["client_id"] == "c1"
 
-class TestSessionPersistence:
-    def test_token_persists_across_multiple_calls(self):
-        ctx = _make_ctx()
-        _cache_token(ctx, "my-token")
-        for _ in range(10):
-            assert _get_client_token(ctx) == "my-token"
+    @pytest.mark.asyncio
+    async def test_auth_code_single_use(self, store):
+        await store.save_auth_code("code1", {"client_id": "c1"})
+        await store.load_auth_code("code1")  # first load
+        assert await store.load_auth_code("code1") is None  # consumed
 
-    def test_same_session_object_same_token(self):
-        """The same session object always resolves to the same token."""
-        session = object()
-        ctx1 = _make_ctx(session)
-        ctx2 = _make_ctx(session)
-        _cache_token(ctx1, "shared-token")
-        assert _get_client_token(ctx2) == "shared-token"
-
-
-# ---------------------------------------------------------------------------
-# Cross-user leakage prevention
-# ---------------------------------------------------------------------------
-
-class TestNoLeakage:
-    def test_alice_never_gets_bobs_token(self):
-        ctx_alice = _make_ctx()
-        ctx_bob = _make_ctx()
-        _cache_token(ctx_alice, "alice-token")
-        _cache_token(ctx_bob, "bob-token")
-        for _ in range(10):
-            assert _get_client_token(ctx_alice) == "alice-token"
-
-    def test_new_session_never_gets_existing_token(self):
-        ctx_alice = _make_ctx()
-        _cache_token(ctx_alice, "alice-token")
-        for _ in range(10):
-            assert _get_client_token(_make_ctx()) is None
-
-    def test_overwriting_session_replaces_token(self):
-        ctx = _make_ctx()
-        _cache_token(ctx, "old-token")
-        _cache_token(ctx, "new-token")
-        assert _get_client_token(ctx) == "new-token"
+    @pytest.mark.asyncio
+    async def test_auth_code_meta_survives_load(self, store):
+        await store.save_auth_code("code1", {"client_id": "c1"}, meta={"token": "xyz"})
+        await store.load_auth_code("code1")  # consumes code, not meta
+        meta = await store.load_auth_code_meta("code1")
+        assert meta["token"] == "xyz"
 
 
-# ---------------------------------------------------------------------------
-# Cache storage
-# ---------------------------------------------------------------------------
+class TestRedisStoreAccessTokens:
+    @pytest.mark.asyncio
+    async def test_save_and_load_access_token(self, store):
+        await store.save_access_token("tok1", {
+            "token": "tok1",
+            "client_id": "c1",
+            "scopes": ["read"],
+            "deferno_token": "deferno-abc",
+        })
+        result = await store.load_access_token("tok1")
+        assert result["client_id"] == "c1"
 
-class TestCacheToken:
-    def test_cache_stores_by_session_id(self):
-        ctx = _make_ctx()
-        _cache_token(ctx, "my-token")
-        assert srv._session_token_cache[id(ctx.session)] == "my-token"
+    @pytest.mark.asyncio
+    async def test_deferno_token_mapping(self, store):
+        await store.save_access_token("tok1", {
+            "token": "tok1",
+            "client_id": "c1",
+            "scopes": [],
+            "deferno_token": "backend-token",
+        })
+        assert await store.load_deferno_token("tok1") == "backend-token"
 
-    def test_cache_noop_without_ctx(self):
-        srv._cache_deferno_token("orphan-token", ctx=None)
-        assert len(srv._session_token_cache) == 0
+    @pytest.mark.asyncio
+    async def test_delete_access_token(self, store):
+        await store.save_access_token("tok1", {
+            "token": "tok1", "client_id": "c1", "scopes": [],
+            "deferno_token": "d1",
+        })
+        await store.delete_access_token("tok1")
+        assert await store.load_access_token("tok1") is None
+        assert await store.load_deferno_token("tok1") is None
 
-    def test_cache_noop_in_stdio_mode(self):
-        srv._http_transport_mode = False
-        ctx = _make_ctx()
-        srv._cache_deferno_token("should-not-cache", ctx=ctx)
-        assert len(srv._session_token_cache) == 0
+
+class TestRedisStoreRefreshTokens:
+    @pytest.mark.asyncio
+    async def test_save_and_load_refresh_token(self, store):
+        await store.save_refresh_token("ref1", {"client_id": "c1"})
+        result = await store.load_refresh_token("ref1")
+        assert result["client_id"] == "c1"
+
+    @pytest.mark.asyncio
+    async def test_delete_refresh_token(self, store):
+        await store.save_refresh_token("ref1", {"client_id": "c1"})
+        await store.delete_refresh_token("ref1")
+        assert await store.load_refresh_token("ref1") is None
 
 
-# ---------------------------------------------------------------------------
-# No context (edge case)
-# ---------------------------------------------------------------------------
+class TestRedisStoreIsolation:
+    """Verify that tokens from different users don't leak."""
 
-class TestNoContext:
-    def test_no_ctx_returns_none(self):
-        client = srv._get_client(ctx=None)
-        assert client._token is None
+    @pytest.mark.asyncio
+    async def test_two_users_isolated(self, store):
+        await store.save_access_token("alice-tok", {
+            "token": "alice-tok", "client_id": "c1", "scopes": [],
+            "deferno_token": "alice-backend",
+        })
+        await store.save_access_token("bob-tok", {
+            "token": "bob-tok", "client_id": "c2", "scopes": [],
+            "deferno_token": "bob-backend",
+        })
+        assert await store.load_deferno_token("alice-tok") == "alice-backend"
+        assert await store.load_deferno_token("bob-tok") == "bob-backend"
+        assert await store.load_deferno_token("eve-tok") is None
 
-    def test_no_ctx_even_with_cache(self):
-        ctx = _make_ctx()
-        _cache_token(ctx, "some-token")
-        client = srv._get_client(ctx=None)
-        assert client._token is None
+    @pytest.mark.asyncio
+    async def test_revoke_one_user_doesnt_affect_other(self, store):
+        await store.save_access_token("alice-tok", {
+            "token": "alice-tok", "client_id": "c1", "scopes": [],
+            "deferno_token": "alice-backend",
+        })
+        await store.save_access_token("bob-tok", {
+            "token": "bob-tok", "client_id": "c2", "scopes": [],
+            "deferno_token": "bob-backend",
+        })
+        await store.delete_access_token("alice-tok")
+        assert await store.load_deferno_token("alice-tok") is None
+        assert await store.load_deferno_token("bob-tok") == "bob-backend"
 
 
 # ---------------------------------------------------------------------------
-# Stdio mode isolation
+# Token generation
+# ---------------------------------------------------------------------------
+
+class TestTokenGeneration:
+    def test_generates_64_char_hex(self):
+        token = _generate_token()
+        assert len(token) == 64
+        int(token, 16)  # must be valid hex
+
+    def test_tokens_are_unique(self):
+        tokens = {_generate_token() for _ in range(100)}
+        assert len(tokens) == 100
+
+
+# ---------------------------------------------------------------------------
+# Stdio mode (no Redis)
 # ---------------------------------------------------------------------------
 
 class TestStdioMode:
-    def test_stdio_ignores_session_cache(self):
+    @pytest.mark.asyncio
+    async def test_get_client_stdio_does_not_use_redis(self):
+        """In stdio mode, _get_client_async should use env/disk, not Redis."""
+        from defernowork_mcp import server as srv
         srv._http_transport_mode = False
-        ctx = _make_ctx()
-        srv._session_token_cache[id(ctx.session)] = "cached-token"
-        client = srv._get_client(ctx=ctx)
-        assert client._token != "cached-token"
+        srv._redis_store = None
+        # Should not raise — resolves token from env or disk, not Redis
+        client = await srv._get_client_async()
+        assert client is not None

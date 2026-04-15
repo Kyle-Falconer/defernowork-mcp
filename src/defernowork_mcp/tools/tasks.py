@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 from mcp.server.fastmcp import Context, FastMCP
 
@@ -14,7 +14,7 @@ _UNSET = object()
 
 def register(
     mcp: FastMCP,
-    get_client: Callable[..., DefernoClient],
+    get_client: Callable[..., Awaitable[DefernoClient]],
     format_error: Callable[[DefernoError], str],
     compact: Callable[[dict[str, Any]], dict[str, Any]],
     unset: object,
@@ -26,7 +26,7 @@ def register(
         Returns a JSON array of task objects. Use ``get_task`` for full
         detail on a specific task by id.
         """
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 tasks = await client.list_tasks()
             except DefernoError as exc:
@@ -36,7 +36,7 @@ def register(
     @mcp.tool()
     async def get_task(task_id: str, ctx: Context = None) -> str:
         """Fetch a single task by id (UUID)."""
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 task = await client.get_task(task_id)
             except DefernoError as exc:
@@ -79,7 +79,7 @@ def register(
                 "recurrence": recurrence,
             }
         )
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 task = await client.create_task(payload)
             except DefernoError as exc:
@@ -124,7 +124,7 @@ def register(
                 "recurrence": recurrence,
             }
         )
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 task = await client.update_task(task_id, payload)
             except DefernoError as exc:
@@ -137,7 +137,7 @@ def register(
 
         Accepts ``open``, ``in-progress``, ``done``, ``dropped``, ``pruned``.
         """
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 task = await client.update_task(task_id, {"status": status})
             except DefernoError as exc:
@@ -157,7 +157,7 @@ def register(
         ``position`` is the insertion index in the target's children list
         (0 = first). Omit to append at end.
         """
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 task = await client.move_task(task_id, new_parent_id, position)
             except DefernoError as exc:
@@ -183,7 +183,7 @@ def register(
             "second_title": second_title,
             "second_description": second_description,
         }
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 result = await client.split_task(task_id, payload)
             except DefernoError as exc:
@@ -216,7 +216,7 @@ def register(
                 "complete_by": complete_by,
             }
         )
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 result = await client.fold_task(task_id, payload)
             except DefernoError as exc:
@@ -231,7 +231,7 @@ def register(
         marked as ``pruned`` but remain recoverable. Pass the id of any
         child whose parent should receive the merge.
         """
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 result = await client.merge_task(task_id)
             except DefernoError as exc:
@@ -241,7 +241,7 @@ def register(
     @mcp.tool()
     async def get_mood_history(ctx: Context = None) -> str:
         """Return the user's historical mood-per-task log for finished tasks."""
-        async with get_client(ctx=ctx) as client:
+        async with (await get_client(ctx=ctx)) as client:
             try:
                 history = await client.mood_history()
             except DefernoError as exc:

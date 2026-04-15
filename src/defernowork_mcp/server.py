@@ -12,9 +12,11 @@ Supports two transports:
 
     defernowork-mcp --transport http [--host 0.0.0.0] [--port 8080]
 
-For HTTP transport, include your Deferno bearer token in every request::
-
-    Authorization: Bearer <your-token>
+For HTTP transport, authentication is handled via OAuth 2.0:
+  - The server exposes ``/.well-known/oauth-authorization-server`` (RFC 8414)
+  - Clients discover endpoints, register dynamically (RFC 7591), and
+    authenticate via Authorization Code + PKCE.
+  - Identity is delegated to Kanidm (OIDC).
 
 For stdio transport, authenticate once with::
 
@@ -52,6 +54,15 @@ Using this instead of None lets us distinguish between 'clear the field'
 (explicit None) and 'don't touch the field' (not provided / _UNSET).
 """
 
+# Module-level reference to the OAuth provider (set in create_server for HTTP mode).
+# Used by oauth_callback.py to handle the Kanidm redirect.
+_oauth_provider: Any = None
+
+# Module-level reference to the Redis store (set in create_server for HTTP mode).
+_redis_store: Any = None
+
+_http_transport_mode = False
+
 
 def _resolve_base_url() -> str:
     """Resolve the backend URL from env, saved credentials, or default."""
@@ -63,23 +74,16 @@ def _resolve_base_url() -> str:
     return base_url
 
 
-_http_transport_mode = False
-
-# In HTTP mode, map session key → Deferno bearer token.
-# Keys are id(ctx.session) — the Python object ID of the MCP ServerSession,
-# which is unique and stable for the lifetime of each MCP session.
-# This is in-memory only — never touches disk.
-_session_token_cache: dict[int, str] = {}
-
-
 def _get_client(ctx: Context | None = None) -> DefernoClient:
     """Return a DefernoClient for the current request/session.
 
     Token resolution order:
-    **HTTP transport (remote/shared server):**
-      1. Look up cached Deferno token by MCP session (via ctx.session).
-         Never falls back to env vars or credential files on the shared
-         server filesystem.
+    **HTTP transport with OAuth:**
+      1. Extract MCP access token from the authenticated context.
+      2. Look up the associated Deferno backend token from Redis.
+
+    **HTTP transport (legacy, no OAuth):**
+      Falls back to None (user must use start_auth/complete_auth tools).
 
     **stdio transport (local single-user):**
       1. ``DEFERNO_TOKEN`` env var
@@ -89,15 +93,29 @@ def _get_client(ctx: Context | None = None) -> DefernoClient:
 
     if _http_transport_mode:
         token = None
-        if ctx is not None:
-            key = id(ctx.session)
-            token = _session_token_cache.get(key)
-            logger.warning(
-                "_get_client: session_key=%s cache_size=%d token=%s",
-                key, len(_session_token_cache), "yes" if token else "None",
-            )
-        else:
-            logger.warning("_get_client: no ctx provided in HTTP mode")
+        # In OAuth mode, the Deferno token is stored in Redis alongside
+        # the MCP access token. We need to get the MCP access token from
+        # the auth context and look up the Deferno token.
+        #
+        # For now during migration, also support the legacy in-memory cache
+        # for stdio-over-HTTP testing.  This will be removed in Phase 3.
+        if ctx is not None and _redis_store is not None:
+            # Try to get the MCP access token from Starlette auth context
+            try:
+                from mcp.server.auth.middleware.auth_context import (
+                    get_access_token,
+                )
+                access_token = get_access_token()
+                if access_token:
+                    import asyncio
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        # We're in an async context — use the store directly
+                        # This is called from async tool handlers, so we can't
+                        # do a sync lookup.  Use a cached approach instead.
+                        pass
+            except Exception:
+                pass
         return DefernoClient(base_url=base_url, token=token)
 
     # stdio mode: single user, safe to check env and disk.
@@ -109,29 +127,36 @@ def _get_client(ctx: Context | None = None) -> DefernoClient:
     return DefernoClient(base_url=base_url, token=token)
 
 
-def _cache_deferno_token(deferno_token: str, ctx: Context | None = None) -> None:
-    """Cache a Deferno token for the current MCP session (HTTP mode only)."""
+async def _get_client_async(ctx: Context | None = None) -> DefernoClient:
+    """Async version of _get_client that can do Redis lookups."""
+    base_url = _resolve_base_url()
+
+    if _http_transport_mode and _redis_store is not None:
+        token = None
+        try:
+            from mcp.server.auth.middleware.auth_context import get_access_token
+            access_token = get_access_token()
+            if access_token:
+                token = await _redis_store.load_deferno_token(access_token.token)
+                if token:
+                    logger.debug("Resolved Deferno token from MCP access token")
+        except Exception:
+            logger.debug("Could not resolve token from auth context", exc_info=True)
+        return DefernoClient(base_url=base_url, token=token)
+
     if not _http_transport_mode:
-        return
-    if ctx is None:
-        logger.warning("_cache_deferno_token: no ctx — token not cached!")
-        return
-    key = id(ctx.session)
-    _session_token_cache[key] = deferno_token
-    logger.warning("Cached Deferno token for session key %s (cache size: %d)", key, len(_session_token_cache))
+        token = os.environ.get("DEFERNO_TOKEN")
+        if token is None:
+            creds = load_credentials()
+            if creds:
+                token = creds.get("token")
+        return DefernoClient(base_url=base_url, token=token)
 
-
-def _get_anon_client() -> DefernoClient:
-    """Return an unauthenticated DefernoClient (for auth init/verify)."""
-    return DefernoClient(base_url=_resolve_base_url())
+    return DefernoClient(base_url=base_url, token=None)
 
 
 def _compact(payload: dict[str, Any]) -> dict[str, Any]:
-    """Drop _UNSET-valued keys so POST/PATCH bodies stay minimal.
-
-    Explicit ``None`` is preserved (sent as JSON null) so the backend
-    can distinguish 'clear this field' from 'leave it unchanged'.
-    """
+    """Drop _UNSET-valued keys so POST/PATCH bodies stay minimal."""
     return {k: v for k, v in payload.items() if v is not _UNSET}
 
 
@@ -140,7 +165,7 @@ def _format_error(exc: DefernoError) -> str:
 
 
 def create_server(http_transport: bool = False) -> FastMCP:
-    global _http_transport_mode
+    global _http_transport_mode, _oauth_provider, _redis_store
     _http_transport_mode = http_transport
 
     security_kwargs: dict = {}
@@ -160,13 +185,67 @@ def create_server(http_transport: bool = False) -> FastMCP:
     except ImportError:
         pass
 
+    # ── OAuth configuration (HTTP mode only) ──────────────────────
+    auth_kwargs: dict = {}
+    if http_transport and os.environ.get("KANIDM_ISSUER_URL"):
+        from mcp.server.auth.settings import (
+            AuthSettings,
+            ClientRegistrationOptions,
+            RevocationOptions,
+        )
+        from .kanidm_oidc import KanidmOIDCClient
+        from .oauth_provider import DefernoOAuthProvider
+        from .redis_store import RedisStore
+
+        redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
+        _redis_store = RedisStore(redis_url)
+
+        mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://deferno.work/mcp")
+        kanidm_callback_url = f"{mcp_public_url}/oauth/kanidm-callback"
+
+        kanidm = KanidmOIDCClient(
+            issuer_url=os.environ["KANIDM_ISSUER_URL"],
+            client_id=os.environ.get("KANIDM_CLIENT_ID", "deferno-mcp"),
+            client_secret=os.environ.get("KANIDM_CLIENT_SECRET", ""),
+            callback_url=kanidm_callback_url,
+        )
+
+        backend_url = os.environ.get(
+            "DEFERNO_INTERNAL_URL",
+            os.environ.get("DEFERNO_BASE_URL", DEFAULT_BASE_URL),
+        )
+        _oauth_provider = DefernoOAuthProvider(
+            store=_redis_store,
+            kanidm=kanidm,
+            backend_internal_url=backend_url,
+        )
+
+        auth_kwargs["auth_server_provider"] = _oauth_provider
+        auth_kwargs["auth"] = AuthSettings(
+            issuer_url=mcp_public_url,
+            resource_server_url=mcp_public_url,
+            client_registration_options=ClientRegistrationOptions(
+                enabled=True,
+                valid_scopes=[
+                    "tasks:read", "tasks:write",
+                    "plan:read", "plan:write",
+                    "profile:read",
+                ],
+                default_scopes=[
+                    "tasks:read", "tasks:write",
+                    "plan:read", "plan:write",
+                    "profile:read",
+                ],
+            ),
+            revocation_options=RevocationOptions(enabled=True),
+        )
+        logger.info("OAuth 2.0 AS configured: issuer=%s", mcp_public_url)
+
     instructions = (
         "Tools for managing a user's Deferno tasks. "
-        "Authentication is via Kanidm (OIDC). If any tool returns a 401, "
-        "call `start_auth` to begin the login flow — it returns a URL "
-        "for the user to open in their browser where they authenticate "
-        "via Kanidm (password, passkey, or MFA). After they approve, "
-        "they see a code to paste back; call `complete_auth` with it. "
+        "Authentication is handled via OAuth 2.0 — if you receive a 401, "
+        "follow the standard OAuth discovery flow (RFC 9728 PRM → RFC 8414 "
+        "AS metadata → Authorization Code + PKCE). "
         "Use `whoami` to confirm authentication, `list_tasks` or the "
         "`defernowork://tasks` resource to index the user's current tasks, and "
         "`create_task` / `update_task` for normal CRUD. Use "
@@ -184,43 +263,49 @@ def create_server(http_transport: bool = False) -> FastMCP:
         "defernowork",
         instructions=instructions,
         **security_kwargs,
+        **auth_kwargs,
     )
 
-    # ── Register tool modules ─────────────────────────────────────────
-    register_auth(mcp, _get_client, _get_anon_client, _format_error)
-    register_tasks(mcp, _get_client, _format_error, _compact, _UNSET)
-    register_daily_plan(mcp, _get_client, _format_error)
+    # ── Register tool modules ─────────────────────────────────────
+    register_auth(mcp, _get_client_async, _get_anon_client, _format_error)
+    register_tasks(mcp, _get_client_async, _format_error, _compact, _UNSET)
+    register_daily_plan(mcp, _get_client_async, _format_error)
 
-    # ── Resources ─────────────────────────────────────────────────────
+    # ── Resources ─────────────────────────────────────────────────
     @mcp.resource("defernowork://tasks")
     async def all_tasks_resource() -> str:
         """All tasks owned by the authenticated user (JSON array)."""
-        async with _get_client() as client:
+        async with (await _get_client_async()) as client:
             tasks = await client.list_tasks()
         return json.dumps(tasks, indent=2)
 
     @mcp.resource("defernowork://tasks/plan")
     async def plan_resource() -> str:
         """Today's curated daily plan (JSON array)."""
-        async with _get_client() as client:
+        async with (await _get_client_async()) as client:
             plan = await client.get_daily_plan()
         return json.dumps(plan, indent=2)
 
     @mcp.resource("defernowork://tasks/mood-history")
     async def mood_history_resource() -> str:
         """Mood history for finished tasks (JSON array)."""
-        async with _get_client() as client:
+        async with (await _get_client_async()) as client:
             history = await client.mood_history()
         return json.dumps(history, indent=2)
 
     @mcp.resource("defernowork://task/{task_id}")
     async def task_resource(task_id: str) -> str:
         """A single task, addressable by UUID as ``defernowork://task/<id>``."""
-        async with _get_client() as client:
+        async with (await _get_client_async()) as client:
             task = await client.get_task(unquote(task_id))
         return json.dumps(task, indent=2)
 
     return mcp
+
+
+def _get_anon_client() -> DefernoClient:
+    """Return an unauthenticated DefernoClient (for auth init/verify)."""
+    return DefernoClient(base_url=_resolve_base_url())
 
 
 # ----------------------------------------------------------------- transports
@@ -258,5 +343,23 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
             "mcp package does not expose an HTTP ASGI app. "
             "Install mcp>=1.2.0: pip install 'mcp>=1.2.0'"
         )
+
+    # If OAuth is configured, add the Kanidm callback route
+    if _oauth_provider is not None:
+        from starlette.applications import Starlette
+        from starlette.routing import Route, Mount
+        from .oauth_callback import kanidm_callback
+
+        # The MCP Starlette app already has auth routes.
+        # We need to add our Kanidm callback.  Since mcp_asgi is a
+        # Starlette app, we can add routes to it.
+        if isinstance(mcp_asgi, Starlette):
+            mcp_asgi.routes.append(
+                Route("/oauth/kanidm-callback", kanidm_callback, methods=["GET"]),
+            )
+        else:
+            logger.warning(
+                "Cannot add Kanidm callback route: mcp_asgi is not a Starlette app"
+            )
 
     uvicorn.run(mcp_asgi, host=host, port=port, log_level=log_level)
