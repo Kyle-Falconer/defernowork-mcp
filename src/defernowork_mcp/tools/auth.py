@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 from ..client import DefernoClient, DefernoError
 from .. import server as _server_mod
@@ -14,7 +14,7 @@ from ..credentials import save_credentials, clear_credentials
 
 def register(
     mcp: FastMCP,
-    get_client: Callable[[], DefernoClient],
+    get_client: Callable[..., DefernoClient],
     get_anon_client: Callable[[], DefernoClient],
     format_error: Callable[[DefernoError], str],
 ) -> None:
@@ -44,7 +44,7 @@ def register(
         })
 
     @mcp.tool()
-    async def complete_auth(session_id: str, code: str) -> str:
+    async def complete_auth(session_id: str, code: str, ctx: Context = None) -> str:
         """Finish authentication by exchanging the browser code for a token.
 
         ``session_id`` comes from the ``start_auth`` response.
@@ -61,15 +61,15 @@ def register(
         username = user.get("username", "")
         base_url = client.base_url
         if _server_mod._http_transport_mode:
-            _server_mod._cache_deferno_token(token)
+            _server_mod._cache_deferno_token(token, ctx=ctx)
         else:
             save_credentials(token, username, base_url)
         return json.dumps({"authenticated": True, "username": username})
 
     @mcp.tool()
-    async def logout() -> str:
+    async def logout(ctx: Context = None) -> str:
         """Log out and remove saved credentials."""
-        async with get_client() as client:
+        async with get_client(ctx=ctx) as client:
             try:
                 await client.logout()
             except DefernoError as exc:
@@ -79,13 +79,13 @@ def register(
         return "Logged out and credentials removed."
 
     @mcp.tool()
-    async def whoami() -> str:
+    async def whoami(ctx: Context = None) -> str:
         """Return the currently authenticated Deferno user.
 
         Call this first to confirm that the Authorization header is valid
         before issuing task operations.
         """
-        async with get_client() as client:
+        async with get_client(ctx=ctx) as client:
             try:
                 result = await client.whoami()
             except DefernoError as exc:

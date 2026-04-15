@@ -27,14 +27,13 @@ This opens a browser-based login flow and saves the token to
 
 from __future__ import annotations
 
-import contextvars
 import json
 import logging
 import os
 from typing import Any
 from urllib.parse import unquote
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import Context, FastMCP
 
 from .client import DefernoClient, DefernoError
 from .credentials import load_credentials
@@ -45,15 +44,6 @@ __all__ = ["create_server", "main", "main_http", "DefernoClient", "DEFAULT_BASE_
 logger = logging.getLogger("defernowork-mcp")
 
 DEFAULT_BASE_URL = "http://127.0.0.1:3000"
-
-# Per-request Bearer token injected by the HTTP auth middleware.
-_request_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "deferno_request_token", default=None
-)
-# Per-request MCP session ID (from Mcp-Session-Id header).
-_mcp_session_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "mcp_session_id", default=None
-)
 
 _UNSET = object()
 """Sentinel for 'caller did not provide this argument'.
@@ -75,19 +65,19 @@ def _resolve_base_url() -> str:
 
 _http_transport_mode = False
 
-# In HTTP mode, map MCP session token → Deferno bearer token.
-# This is in-memory only — never touches disk.  Each MCP client
-# session gets its own Deferno identity after calling complete_auth.
-_session_token_cache: dict[str, str] = {}
+# In HTTP mode, map session key → Deferno bearer token.
+# Keys are id(ctx.session) — the Python object ID of the MCP ServerSession,
+# which is unique and stable for the lifetime of each MCP session.
+# This is in-memory only — never touches disk.
+_session_token_cache: dict[int, str] = {}
 
 
-
-def _get_client() -> DefernoClient:
+def _get_client(ctx: Context | None = None) -> DefernoClient:
     """Return a DefernoClient for the current request/session.
 
     Token resolution order:
     **HTTP transport (remote/shared server):**
-      1. Per-request MCP Bearer token → look up cached Deferno token.
+      1. Look up cached Deferno token by MCP session (via ctx.session).
          Never falls back to env vars or credential files on the shared
          server filesystem.
 
@@ -98,26 +88,16 @@ def _get_client() -> DefernoClient:
     base_url = _resolve_base_url()
 
     if _http_transport_mode:
-        # Try per-request Bearer token first (if client sends Deferno token directly).
-        token = _request_token.get()
-        if not token:
-            # Look up cached Deferno token by MCP session ID.
-            sid = _mcp_session_id.get()
+        token = None
+        if ctx is not None:
+            key = id(ctx.session)
+            token = _session_token_cache.get(key)
             logger.warning(
-                "_get_client: sid=%s cache_keys=%s cache_size=%d",
-                sid[:12] if sid else "None",
-                list(_session_token_cache.keys())[:5],
-                len(_session_token_cache),
+                "_get_client: session_key=%s cache_size=%d token=%s",
+                key, len(_session_token_cache), "yes" if token else "None",
             )
-            if sid:
-                token = _session_token_cache.get(sid)
-                if not token:
-                    unique_tokens = set(_session_token_cache.values())
-                    if len(unique_tokens) == 1:
-                        token = next(iter(unique_tokens))
-                        _session_token_cache[sid] = token
-                        logger.warning("Re-associated token with new MCP session %s", sid[:12])
-        logger.warning("_get_client: resolved token=%s", "yes" if token else "None")
+        else:
+            logger.warning("_get_client: no ctx provided in HTTP mode")
         return DefernoClient(base_url=base_url, token=token)
 
     # stdio mode: single user, safe to check env and disk.
@@ -129,25 +109,16 @@ def _get_client() -> DefernoClient:
     return DefernoClient(base_url=base_url, token=token)
 
 
-def _cache_deferno_token(deferno_token: str) -> None:
+def _cache_deferno_token(deferno_token: str, ctx: Context | None = None) -> None:
     """Cache a Deferno token for the current MCP session (HTTP mode only)."""
     if not _http_transport_mode:
-        logger.warning("_cache_deferno_token: not in HTTP mode, skipping")
         return
-    sid = _mcp_session_id.get()
-    bearer = _request_token.get()
-    key = sid or bearer
-    logger.warning(
-        "_cache_deferno_token: sid=%s bearer=%s key=%s",
-        sid[:12] if sid else "None",
-        "yes" if bearer else "None",
-        key[:12] if key else "None",
-    )
-    if key:
-        _session_token_cache[key] = deferno_token
-        logger.warning("Cached Deferno token for session %s (cache size: %d)", key[:12], len(_session_token_cache))
-    else:
-        logger.warning("_cache_deferno_token: NO KEY — token not cached!")
+    if ctx is None:
+        logger.warning("_cache_deferno_token: no ctx — token not cached!")
+        return
+    key = id(ctx.session)
+    _session_token_cache[key] = deferno_token
+    logger.warning("Cached Deferno token for session key %s (cache size: %d)", key, len(_session_token_cache))
 
 
 def _get_anon_client() -> DefernoClient:
@@ -269,36 +240,6 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
             "uvicorn is required for HTTP transport: pip install 'defernowork-mcp[http]'"
         ) from exc
 
-    from starlette.types import ASGIApp, Receive, Scope, Send
-
-    class _BearerAuthMiddleware:
-        """Pure-ASGI middleware: extracts Bearer token → _request_token contextvar."""
-
-        def __init__(self, app: ASGIApp) -> None:
-            self.app = app
-
-        async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-            if scope["type"] == "http":
-                headers: dict[bytes, bytes] = dict(scope.get("headers", []))
-                auth = headers.get(b"authorization", b"").decode()
-                token = auth.removeprefix("Bearer ").strip() or None
-                session_id = headers.get(b"mcp-session-id", b"").decode() or None
-                logger.warning(
-                    "MCP request: path=%s auth=%s mcp_session=%s",
-                    scope.get("path", "?"),
-                    "yes" if token else "no",
-                    session_id[:12] if session_id else "none",
-                )
-                tok = _request_token.set(token)
-                sid = _mcp_session_id.set(session_id)
-                try:
-                    await self.app(scope, receive, send)
-                finally:
-                    _request_token.reset(tok)
-                    _mcp_session_id.reset(sid)
-            else:
-                await self.app(scope, receive, send)
-
     log_level = os.environ.get("DEFERNO_LOG_LEVEL", "WARNING").lower()
     logging.basicConfig(level=log_level.upper())
 
@@ -318,5 +259,4 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
             "Install mcp>=1.2.0: pip install 'mcp>=1.2.0'"
         )
 
-    app = _BearerAuthMiddleware(mcp_asgi)
-    uvicorn.run(app, host=host, port=port, log_level=log_level)
+    uvicorn.run(mcp_asgi, host=host, port=port, log_level=log_level)
