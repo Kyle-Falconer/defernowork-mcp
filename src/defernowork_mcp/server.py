@@ -344,16 +344,27 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
             "Install mcp>=1.2.0: pip install 'mcp>=1.2.0'"
         )
 
-    # If OAuth is configured, add the Kanidm callback route
+    # If OAuth is configured, add custom routes
     if _oauth_provider is not None:
         from starlette.applications import Starlette
+        from starlette.responses import JSONResponse
         from starlette.routing import Route, Mount
         from .oauth_callback import kanidm_callback
 
-        # The MCP Starlette app already has auth routes.
-        # We need to add our Kanidm callback.  Since mcp_asgi is a
-        # Starlette app, we can add routes to it.
+        # Alias /.well-known/openid-configuration → same data as
+        # /.well-known/oauth-authorization-server.  Some MCP clients
+        # (including Claude.ai's connector) look for OIDC discovery
+        # instead of RFC 8414 AS metadata.
+        async def oidc_discovery_alias(request):
+            for route in mcp_asgi.routes:
+                if hasattr(route, 'path') and route.path == "/.well-known/oauth-authorization-server":
+                    return await route.endpoint(request)
+            return JSONResponse({"error": "not configured"}, status_code=404)
+
         if isinstance(mcp_asgi, Starlette):
+            mcp_asgi.routes.insert(0,
+                Route("/.well-known/openid-configuration", oidc_discovery_alias, methods=["GET"]),
+            )
             mcp_asgi.routes.append(
                 Route("/oauth/kanidm-callback", kanidm_callback, methods=["GET"]),
             )
