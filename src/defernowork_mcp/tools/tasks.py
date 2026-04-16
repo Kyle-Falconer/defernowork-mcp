@@ -247,3 +247,18 @@ def register(
             except DefernoError as exc:
                 return format_error(exc)
         return json.dumps(history)
+
+    @mcp.tool()
+    async def export_data(ctx: Context = None) -> str:
+        """Export all user data as JSON.
+
+        Returns a complete backup of all tasks (with full history, mood
+        vectors, recurrence rules), root ordering, and daily plans.
+        The export can be imported via the Deferno web UI settings page.
+        """
+        async with (await get_client(ctx=ctx)) as client:
+            try:
+                result = await client.export_data()
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps(result)

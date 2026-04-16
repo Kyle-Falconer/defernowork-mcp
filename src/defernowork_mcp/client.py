@@ -226,3 +226,7 @@ class DefernoClient:
 
     async def mood_history(self) -> list[dict[str, Any]]:
         return await self._request("GET", "/tasks/mood-history")
+
+    async def export_data(self) -> dict[str, Any]:
+        """Export all user data."""
+        return await self._request("GET", "/tasks/export")
