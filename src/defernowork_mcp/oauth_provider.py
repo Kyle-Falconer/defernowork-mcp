@@ -13,6 +13,7 @@ Flow overview:
 from __future__ import annotations
 
 import logging
+import os
 import secrets
 import time
 from typing import Any
@@ -88,6 +89,7 @@ class DefernoOAuthProvider:
         await self.store.save_pending_auth(nonce, {
             # MCP client's original params (need these to issue the auth code)
             "client_id": client.client_id,
+            "client_name": client.client_name or "",
             "redirect_uri": str(params.redirect_uri),
             "redirect_uri_provided_explicitly": params.redirect_uri_provided_explicitly,
             "state": params.state,
@@ -134,8 +136,10 @@ class DefernoOAuthProvider:
         # 3. Get a Deferno backend session for this user
         try:
             deferno_token = await self._get_deferno_session(
-                kanidm_subject=identity.subject,
-                kanidm_username=identity.username,
+                oidc_subject=identity.subject,
+                oidc_username=identity.username,
+                mcp_client_id=pending["client_id"],
+                mcp_client_name=pending.get("client_name", ""),
             )
         except LegacyAccountError:
             # Re-save the pending auth under a link: key so the password
@@ -168,23 +172,29 @@ class DefernoOAuthProvider:
 
     async def _get_deferno_session(
         self,
-        kanidm_subject: str,
-        kanidm_username: str,
+        oidc_subject: str,
+        oidc_username: str,
+        mcp_client_id: str,
+        mcp_client_name: str,
     ) -> str:
-        """Call the Deferno auth service to create a session from Kanidm identity.
+        """Call the Deferno auth service to create a session from OIDC identity.
 
         Raises ``LegacyAccountError`` if a legacy account exists that needs
         password verification before linking.
         """
+        secret = os.environ["INTERNAL_SHARED_SECRET"]
         resp = await self._http.post(
             f"{self.backend_internal_url}/internal/mcp-session",
             json={
-                "kanidm_subject": kanidm_subject,
-                "kanidm_username": kanidm_username,
+                "oidc_subject": oidc_subject,
+                "oidc_username": oidc_username,
+                "mcp_client_id": mcp_client_id,
+                "mcp_client_name": mcp_client_name,
             },
+            headers={"X-Internal-Secret": secret},
         )
         if resp.status_code == 409:
-            raise LegacyAccountError(kanidm_subject, kanidm_username)
+            raise LegacyAccountError(oidc_subject, oidc_username)
         resp.raise_for_status()
         data = resp.json()
         return data["token"]

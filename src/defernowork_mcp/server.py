@@ -187,7 +187,7 @@ def create_server(http_transport: bool = False) -> FastMCP:
 
     # ── OAuth configuration (HTTP mode only) ──────────────────────
     auth_kwargs: dict = {}
-    if http_transport and os.environ.get("KANIDM_ISSUER_URL"):
+    if http_transport and os.environ.get("ZITADEL_ISSUER_URL"):
         from mcp.server.auth.settings import (
             AuthSettings,
             ClientRegistrationOptions,
@@ -204,9 +204,9 @@ def create_server(http_transport: bool = False) -> FastMCP:
         kanidm_callback_url = f"{mcp_public_url}/oauth/kanidm-callback"
 
         kanidm = KanidmOIDCClient(
-            issuer_url=os.environ["KANIDM_ISSUER_URL"],
-            client_id=os.environ.get("KANIDM_CLIENT_ID", "deferno-mcp"),
-            client_secret=os.environ.get("KANIDM_CLIENT_SECRET", ""),
+            issuer_url=os.environ["ZITADEL_ISSUER_URL"],
+            client_id=os.environ.get("ZITADEL_CLIENT_ID", "deferno-mcp"),
+            client_secret=os.environ.get("ZITADEL_CLIENT_SECRET", ""),
             callback_url=kanidm_callback_url,
         )
 
