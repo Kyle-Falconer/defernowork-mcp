@@ -16,7 +16,7 @@ For HTTP transport, authentication is handled via OAuth 2.0:
   - The server exposes ``/.well-known/oauth-authorization-server`` (RFC 8414)
   - Clients discover endpoints, register dynamically (RFC 7591), and
     authenticate via Authorization Code + PKCE.
-  - Identity is delegated to Kanidm (OIDC).
+  - Identity is delegated to an upstream OIDC provider (Zitadel).
 
 For stdio transport, authenticate once with::
 
@@ -55,7 +55,7 @@ Using this instead of None lets us distinguish between 'clear the field'
 """
 
 # Module-level reference to the OAuth provider (set in create_server for HTTP mode).
-# Used by oauth_callback.py to handle the Kanidm redirect.
+# Used by oauth_callback.py to handle the OIDC redirect.
 _oauth_provider: Any = None
 
 # Module-level reference to the Redis store (set in create_server for HTTP mode).
@@ -201,13 +201,13 @@ def create_server(http_transport: bool = False) -> FastMCP:
         _redis_store = RedisStore(redis_url)
 
         mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://deferno.work/mcp")
-        kanidm_callback_url = f"{mcp_public_url}/oauth/kanidm-callback"
+        oidc_callback_url = f"{mcp_public_url}/oauth/oidc-callback"
 
-        kanidm = OidcClient(
+        oidc = OidcClient(
             issuer_url=os.environ["ZITADEL_ISSUER_URL"],
             client_id=os.environ.get("ZITADEL_CLIENT_ID", "deferno-mcp"),
             client_secret=os.environ.get("ZITADEL_CLIENT_SECRET", ""),
-            callback_url=kanidm_callback_url,
+            callback_url=oidc_callback_url,
         )
 
         backend_url = os.environ.get(
@@ -216,7 +216,7 @@ def create_server(http_transport: bool = False) -> FastMCP:
         )
         _oauth_provider = DefernoOAuthProvider(
             store=_redis_store,
-            kanidm=kanidm,
+            oidc=oidc,
             backend_internal_url=backend_url,
         )
 
@@ -349,7 +349,7 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
         from starlette.applications import Starlette
         from starlette.responses import JSONResponse
         from starlette.routing import Route, Mount
-        from .oauth_callback import kanidm_callback
+        from .oauth_callback import oidc_callback
 
         # Alias /.well-known/openid-configuration → same data as
         # /.well-known/oauth-authorization-server.  Some MCP clients
@@ -377,11 +377,11 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
                 Route("/.well-known/openid-configuration", oidc_discovery_alias, methods=["GET"]),
             )
             mcp_asgi.routes.append(
-                Route("/oauth/kanidm-callback", kanidm_callback, methods=["GET"]),
+                Route("/oauth/oidc-callback", oidc_callback, methods=["GET"]),
             )
         else:
             logger.warning(
-                "Cannot add Kanidm callback route: mcp_asgi is not a Starlette app"
+                "Cannot add OIDC callback route: mcp_asgi is not a Starlette app"
             )
 
     uvicorn.run(mcp_asgi, host=host, port=port, log_level=log_level)

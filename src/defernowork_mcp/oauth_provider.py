@@ -47,11 +47,11 @@ class DefernoOAuthProvider:
     def __init__(
         self,
         store: RedisStore,
-        kanidm: OidcClient,
+        oidc: OidcClient,
         backend_internal_url: str,
     ) -> None:
         self.store = store
-        self.kanidm = kanidm
+        self.oidc = oidc
         self.backend_internal_url = backend_internal_url.rstrip("/")
         self._http = httpx.AsyncClient(timeout=10)
 
@@ -97,36 +97,36 @@ class DefernoOAuthProvider:
             "code_challenge": params.code_challenge,
             "resource": params.resource,
             # OIDC PKCE state (to exchange the OIDC code later)
-            "kanidm_pkce_verifier": pkce.verifier,
+            "oidc_pkce_verifier": pkce.verifier,
         })
 
         # Build the OIDC authorization URL.  The nonce is our state param
         # so the callback can look up the pending auth.
-        return await self.kanidm.authorization_url(
+        return await self.oidc.authorization_url(
             state=nonce,
             pkce=pkce,
         )
 
     # ── OIDC callback (called from oauth_callback.py route) ────────
 
-    async def handle_kanidm_callback(
+    async def handle_oidc_callback(
         self,
-        kanidm_state: str,
-        kanidm_code: str,
+        oidc_state: str,
+        oidc_code: str,
     ) -> tuple[str, str, str | None]:
         """Process the OIDC redirect and return (mcp_auth_code, redirect_uri, state).
 
         This is called by the Starlette callback route, not by the MCP framework.
         """
         # 1. Load pending auth
-        pending = await self.store.load_pending_auth(kanidm_state)
+        pending = await self.store.load_pending_auth(oidc_state)
         if pending is None:
             raise ValueError("Unknown or expired authorization session")
 
         # 2. Exchange OIDC code for identity
-        identity = await self.kanidm.exchange_code(
-            code=kanidm_code,
-            pkce_verifier=pending["kanidm_pkce_verifier"],
+        identity = await self.oidc.exchange_code(
+            code=oidc_code,
+            pkce_verifier=pending["oidc_pkce_verifier"],
         )
         logger.info(
             "OIDC identity: sub=%s user=%s",

@@ -112,7 +112,7 @@ class DefernoClient:
     async def oidc_callback(self, state: str, code: str) -> dict[str, Any]:
         """Exchange an OIDC callback code for a session token.
 
-        Returns ``{token, user}`` or ``{needs_migration, username, kanidm_id}``.
+        Returns ``{token, user}`` or ``{needs_migration, username, oidc_subject}``.
         """
         result = await self._request(
             "GET",

@@ -23,7 +23,7 @@ def register(
         """Begin the Deferno authentication flow.
 
         Returns a URL for the user to open in their browser.
-        The user authenticates via Kanidm,
+        The user authenticates via the OIDC provider,
         then sees a short code to paste back here.
 
         NOTE: In HTTP transport with OAuth enabled, authentication is
@@ -47,7 +47,7 @@ def register(
             "session_id": result["session_id"],
             "instructions": (
                 "Show the auth_url to the user and ask them to open it "
-                "in their browser. They will authenticate via Kanidm "
+                "in their browser. They will authenticate via the OIDC provider "
                 "(password, passkey, or MFA). After approving, they will "
                 "see a short code. Ask them to paste that code, then call "
                 "complete_auth with the session_id and code."
@@ -60,7 +60,7 @@ def register(
 
         ``session_id`` comes from the ``start_auth`` response.
         ``code`` is the short code the user copied from their browser
-        after signing in via Kanidm.
+        after signing in via the OIDC provider.
 
         NOTE: In HTTP transport with OAuth enabled, authentication is
         handled automatically. This tool is only needed for stdio/CLI.

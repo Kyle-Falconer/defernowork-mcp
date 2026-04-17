@@ -49,7 +49,7 @@ class RedisStore:
         raw = await self._redis.get(f"mcp:client:{client_id}")
         return json.loads(raw) if raw else None
 
-    # ── Pending auth (MCP authorize → Kanidm redirect) ───────────────
+    # ── Pending auth (MCP authorize → OIDC redirect) ─────────────────
 
     async def save_pending_auth(self, nonce: str, data: dict[str, Any]) -> None:
         await self._redis.set(
