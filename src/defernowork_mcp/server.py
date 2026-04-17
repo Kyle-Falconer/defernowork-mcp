@@ -349,7 +349,7 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
         from starlette.applications import Starlette
         from starlette.responses import JSONResponse
         from starlette.routing import Route, Mount
-        from .oauth_callback import kanidm_callback, link_legacy_account
+        from .oauth_callback import kanidm_callback
 
         # Alias /.well-known/openid-configuration → same data as
         # /.well-known/oauth-authorization-server.  Some MCP clients
@@ -378,9 +378,6 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
             )
             mcp_asgi.routes.append(
                 Route("/oauth/kanidm-callback", kanidm_callback, methods=["GET"]),
-            )
-            mcp_asgi.routes.append(
-                Route("/oauth/link-legacy", link_legacy_account, methods=["POST"]),
             )
         else:
             logger.warning(

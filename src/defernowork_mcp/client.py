@@ -149,16 +149,6 @@ class DefernoClient:
             body["invite_code"] = invite_code
         return await self._request("POST", "/auth/register", authed=False, json_body=body)
 
-    async def login(self, username: str, password: str) -> dict[str, Any]:
-        result = await self._request(
-            "POST",
-            "/auth/login",
-            authed=False,
-            json_body={"username": username, "password": password},
-        )
-        self._token = result["token"]
-        return result
-
     async def logout(self) -> None:
         await self._request("POST", "/auth/logout")
         self._token = None

@@ -134,18 +134,12 @@ class DefernoOAuthProvider:
         )
 
         # 3. Get a Deferno backend session for this user
-        try:
-            deferno_token = await self._get_deferno_session(
-                oidc_subject=identity.subject,
-                oidc_username=identity.username,
-                mcp_client_id=pending["client_id"],
-                mcp_client_name=pending.get("client_name", ""),
-            )
-        except LegacyAccountError:
-            # Re-save the pending auth under a link: key so the password
-            # form can complete the flow after verification.
-            await self.store.save_pending_auth(f"link:{kanidm_state}", pending)
-            raise
+        deferno_token = await self._get_deferno_session(
+            oidc_subject=identity.subject,
+            oidc_username=identity.username,
+            mcp_client_id=pending["client_id"],
+            mcp_client_name=pending.get("client_name", ""),
+        )
 
         # 4. Generate MCP authorization code
         mcp_code = _generate_token()
@@ -177,11 +171,7 @@ class DefernoOAuthProvider:
         mcp_client_id: str,
         mcp_client_name: str,
     ) -> str:
-        """Call the Deferno auth service to create a session from OIDC identity.
-
-        Raises ``LegacyAccountError`` if a legacy account exists that needs
-        password verification before linking.
-        """
+        """Call the Deferno auth service to create a session from OIDC identity."""
         secret = os.environ["INTERNAL_SHARED_SECRET"]
         resp = await self._http.post(
             f"{self.backend_internal_url}/internal/mcp-session",
@@ -193,38 +183,9 @@ class DefernoOAuthProvider:
             },
             headers={"X-Internal-Secret": secret},
         )
-        if resp.status_code == 409:
-            raise LegacyAccountError(oidc_subject, oidc_username)
         resp.raise_for_status()
         data = resp.json()
         return data["token"]
-
-    async def link_legacy_account(
-        self,
-        kanidm_subject: str,
-        username: str,
-        password: str,
-    ) -> str:
-        """Link a legacy Deferno account to Kanidm after password verification."""
-        resp = await self._http.post(
-            f"{self.backend_internal_url}/internal/link-kanidm",
-            json={
-                "kanidm_subject": kanidm_subject,
-                "username": username,
-                "password": password,
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["token"]
-
-
-class LegacyAccountError(Exception):
-    """Raised when a legacy account needs password verification before linking."""
-    def __init__(self, kanidm_subject: str, username: str):
-        self.kanidm_subject = kanidm_subject
-        self.username = username
-        super().__init__(f"Legacy account '{username}' needs password to link")
 
     # ── Authorization code exchange ──────────────────────────────────
 

@@ -23,7 +23,7 @@ def register(
         """Begin the Deferno authentication flow.
 
         Returns a URL for the user to open in their browser.
-        The user authenticates via Kanidm (or legacy password),
+        The user authenticates via Kanidm,
         then sees a short code to paste back here.
 
         NOTE: In HTTP transport with OAuth enabled, authentication is
