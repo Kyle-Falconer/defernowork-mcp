@@ -151,3 +151,40 @@ async def test_move_task_sends_payload(client: DefernoClient):
     body = json.loads(route.calls[0].request.content)
     assert body["new_parent_id"] == "parent-1"
     assert body["position"] == 2
+
+
+# ── Batch operations ─────────────────────────────────────────────────────
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_batch_sends_payload(client: DefernoClient):
+    response_data = {
+        "tasks": [
+            {"id": "id-1", "title": "Updated"},
+            {"id": "id-2", "title": "Moved"},
+        ]
+    }
+    route = respx.post(f"{BASE}/tasks/batch").respond(json=response_data)
+    result = await client.batch([
+        {"op": "update", "task_id": "id-1", "title": "Updated"},
+        {"op": "move", "task_id": "id-2", "new_parent_id": "id-1"},
+    ])
+    assert len(result["tasks"]) == 2
+    import json
+    body = json.loads(route.calls[0].request.content)
+    assert len(body["operations"]) == 2
+    assert body["operations"][0]["op"] == "update"
+    assert body["operations"][1]["op"] == "move"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_batch_error_raises(client: DefernoClient):
+    respx.post(f"{BASE}/tasks/batch").respond(
+        400, json={"message": "operation 1: cannot complete task while children remain active"}
+    )
+    with pytest.raises(DefernoError) as exc_info:
+        await client.batch([{"op": "update", "task_id": "id-1", "status": "done"}])
+    assert exc_info.value.status_code == 400
+    assert "operation 1" in exc_info.value.message

@@ -239,6 +239,33 @@ def register(
         return json.dumps(result)
 
     @mcp.tool()
+    async def batch(
+        operations: list[dict[str, Any]],
+        ctx: Context = None,
+    ) -> str:
+        """Execute multiple task operations atomically in a single call.
+
+        ``operations`` is a list of operation objects. Each must have an
+        ``op`` field (``"update"`` or ``"move"``) and a ``task_id``.
+
+        Update operations accept the same fields as ``update_task``
+        (``title``, ``description``, ``status``, ``labels``, etc.) at the
+        top level alongside ``op`` and ``task_id``.
+
+        Move operations accept ``new_parent_id`` (UUID or null for root)
+        and an optional ``position`` (insertion index).
+
+        All operations succeed or none do (all-or-nothing).  On success
+        returns ``{"tasks": [...]}``, the list of all modified tasks.
+        """
+        async with (await get_client(ctx=ctx)) as client:
+            try:
+                result = await client.batch(operations)
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps(result)
+
+    @mcp.tool()
     async def get_mood_history(ctx: Context = None) -> str:
         """Return the user's historical mood-per-task log for finished tasks."""
         async with (await get_client(ctx=ctx)) as client:
