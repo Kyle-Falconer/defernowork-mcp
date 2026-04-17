@@ -56,7 +56,7 @@ class KanidmOIDCClient:
         self.client_secret = client_secret
         self.callback_url = callback_url
         self._discovery: dict[str, Any] | None = None
-        self._http = httpx.AsyncClient(verify=False, timeout=15)
+        self._http = httpx.AsyncClient(timeout=15)
 
     async def close(self) -> None:
         await self._http.aclose()
@@ -115,26 +115,21 @@ class KanidmOIDCClient:
         resp.raise_for_status()
         token_data = resp.json()
 
-        # Fetch userinfo for identity claims (simpler than JWT validation
-        # for an internal trust boundary — Kanidm is on our Docker network)
+        # Fetch userinfo for identity claims — this is an authenticated
+        # call to the IdP's userinfo endpoint (always available with Zitadel).
         userinfo_endpoint = disc.get("userinfo_endpoint")
-        if userinfo_endpoint:
-            access_token = token_data["access_token"]
-            ui_resp = await self._http.get(
-                userinfo_endpoint,
-                headers={"Authorization": f"Bearer {access_token}"},
+        if not userinfo_endpoint:
+            raise RuntimeError(
+                "OIDC provider does not expose a userinfo endpoint; "
+                "cannot extract identity claims safely"
             )
-            ui_resp.raise_for_status()
-            claims = ui_resp.json()
-        else:
-            # Fall back to decoding ID token claims without signature
-            # verification (internal trust boundary)
-            import json
-            from base64 import urlsafe_b64decode
-            id_token = token_data["id_token"]
-            payload = id_token.split(".")[1]
-            payload += "=" * (4 - len(payload) % 4)
-            claims = json.loads(urlsafe_b64decode(payload))
+        access_token = token_data["access_token"]
+        ui_resp = await self._http.get(
+            userinfo_endpoint,
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        ui_resp.raise_for_status()
+        claims = ui_resp.json()
 
         return KanidmIdentity(
             subject=claims.get("sub", ""),
