@@ -20,8 +20,8 @@ logger = logging.getLogger("defernowork-mcp")
 # TTLs (seconds)
 PENDING_AUTH_TTL = 600       # 10 minutes
 AUTH_CODE_TTL = 300          # 5 minutes
-ACCESS_TOKEN_TTL = 3600      # 1 hour
-REFRESH_TOKEN_TTL = 604800   # 7 days
+ACCESS_TOKEN_TTL = 31_536_000  # 1 year (8760 hours)
+REFRESH_TOKEN_TTL = 31_536_000  # 1 year
 AUDIT_MAXLEN = 10_000
 
 
