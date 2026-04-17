@@ -351,12 +351,19 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
         from starlette.routing import Route, Mount
         from .oauth_callback import oidc_callback
 
-        # Alias /.well-known/openid-configuration → same data as
-        # /.well-known/oauth-authorization-server.  Some MCP clients
-        # (including Claude.ai's connector) look for OIDC discovery
-        # instead of RFC 8414 AS metadata.
+        # Custom OAuth/OIDC discovery metadata.
+        #
+        # We override FastMCP's built-in /.well-known/oauth-authorization-server
+        # because the upstream ClientAuthenticator has a bug: it requires
+        # client_id in the form body even for client_secret_basic, but the
+        # TypeScript MCP SDK (used by Claude Code) only sends it in the
+        # Authorization header per RFC 6749.  By advertising only
+        # client_secret_post, clients send client_id in the form body.
+        #
+        # We also serve /.well-known/openid-configuration as an alias for
+        # clients (like Claude.ai's connector) that use OIDC discovery.
         mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://deferno.work/mcp")
-        _oidc_metadata = {
+        _oauth_metadata = {
             "issuer": mcp_public_url,
             "authorization_endpoint": f"{mcp_public_url}/authorize",
             "token_endpoint": f"{mcp_public_url}/token",
@@ -365,16 +372,21 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
             "scopes_supported": ["tasks:read", "tasks:write", "plan:read", "plan:write", "profile:read"],
             "response_types_supported": ["code"],
             "grant_types_supported": ["authorization_code", "refresh_token"],
-            "token_endpoint_auth_methods_supported": ["client_secret_post", "client_secret_basic"],
+            "token_endpoint_auth_methods_supported": ["client_secret_post"],
+            "revocation_endpoint_auth_methods_supported": ["client_secret_post"],
             "code_challenge_methods_supported": ["S256"],
         }
 
-        async def oidc_discovery_alias(request):
-            return JSONResponse(_oidc_metadata)
+        async def oauth_metadata_handler(request):
+            return JSONResponse(_oauth_metadata)
 
         if isinstance(mcp_asgi, Starlette):
+            # Insert at position 0 to override FastMCP's built-in routes
             mcp_asgi.routes.insert(0,
-                Route("/.well-known/openid-configuration", oidc_discovery_alias, methods=["GET"]),
+                Route("/.well-known/oauth-authorization-server", oauth_metadata_handler, methods=["GET"]),
+            )
+            mcp_asgi.routes.insert(1,
+                Route("/.well-known/openid-configuration", oauth_metadata_handler, methods=["GET"]),
             )
             mcp_asgi.routes.append(
                 Route("/oauth/oidc-callback", oidc_callback, methods=["GET"]),

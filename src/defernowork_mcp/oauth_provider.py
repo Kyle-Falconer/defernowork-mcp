@@ -64,12 +64,12 @@ class DefernoOAuthProvider:
         return OAuthClientInformationFull(**data)
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
-        client_id = client_info.client_id or secrets.token_hex(16)
-        client_secret = client_info.client_secret or secrets.token_hex(32)
-        client_info.client_id = client_id
-        client_info.client_secret = client_secret
-        client_info.client_id_issued_at = int(time.time())
-        await self.store.save_client(client_id, client_info.model_dump(mode="json"))
+        # FastMCP's RegistrationHandler already generates client_id and
+        # client_secret (when appropriate for the auth method).  Just persist
+        # what was passed in — do not generate new values here.
+        await self.store.save_client(
+            client_info.client_id, client_info.model_dump(mode="json"),
+        )
 
     # ── Authorization ────────────────────────────────────────────────
 
