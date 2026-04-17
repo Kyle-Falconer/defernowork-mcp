@@ -98,6 +98,8 @@ def register(
         productive: float | None = unset,
         desire: float | None = unset,
         recurrence: dict[str, Any] | None = unset,
+        recurring_scope: str | None = unset,
+        recurrence_id: str | None = unset,
         ctx: Context = None,
     ) -> str:
         """Patch mutable fields on a task.
@@ -110,6 +112,15 @@ def register(
         removes the deadline). Omitting a parameter leaves it unchanged.
 
         ``recurrence`` sets or clears a repeat schedule (see ``create_task``).
+
+        For recurring tasks, if you change title, description, labels, or
+        complete_by, you MUST also provide ``recurring_scope``:
+        ``"this"`` (single instance), ``"following"`` (this and future),
+        or ``"all"`` (entire series). ``"this"`` and ``"following"`` also
+        require ``recurrence_id`` (the ISO start time of the instance).
+        If the task is recurring and scope is missing, the call will fail
+        with a message asking you to specify the scope — ask the user
+        which option they prefer.
         """
         payload = compact(
             {
@@ -122,10 +133,27 @@ def register(
                 "productive": productive,
                 "desire": desire,
                 "recurrence": recurrence,
+                "recurring_scope": recurring_scope,
+                "recurrence_id": recurrence_id,
             }
         )
         async with (await get_client(ctx=ctx)) as client:
             try:
+                # Check if this is a recurring task needing a scope.
+                if recurring_scope is unset:
+                    deferno_fields = {"title", "description", "labels", "complete_by"}
+                    has_deferno_changes = any(k in payload for k in deferno_fields)
+                    if has_deferno_changes:
+                        task_data = await client.get_task(task_id)
+                        if task_data.get("series_id"):
+                            return (
+                                "This is a recurring task. Please specify "
+                                "recurring_scope: 'this' (single instance), "
+                                "'following' (this and future events), or "
+                                "'all' (entire series). "
+                                "Ask the user which option they prefer."
+                            )
+
                 task = await client.update_task(task_id, payload)
             except DefernoError as exc:
                 return format_error(exc)
