@@ -193,7 +193,7 @@ def create_server(http_transport: bool = False) -> FastMCP:
             ClientRegistrationOptions,
             RevocationOptions,
         )
-        from .kanidm_oidc import KanidmOIDCClient
+        from .oidc_client import OidcClient
         from .oauth_provider import DefernoOAuthProvider
         from .redis_store import RedisStore
 
@@ -203,7 +203,7 @@ def create_server(http_transport: bool = False) -> FastMCP:
         mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://deferno.work/mcp")
         kanidm_callback_url = f"{mcp_public_url}/oauth/kanidm-callback"
 
-        kanidm = KanidmOIDCClient(
+        kanidm = OidcClient(
             issuer_url=os.environ["ZITADEL_ISSUER_URL"],
             client_id=os.environ.get("ZITADEL_CLIENT_ID", "deferno-mcp"),
             client_secret=os.environ.get("ZITADEL_CLIENT_SECRET", ""),

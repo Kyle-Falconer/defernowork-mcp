@@ -1,4 +1,4 @@
-"""Kanidm OIDC client for the upstream identity leg of the OAuth dance.
+"""OIDC client for the upstream identity leg of the OAuth dance.
 
 Handles OIDC discovery, building authorization URLs with PKCE, exchanging
 authorization codes for ID tokens, and extracting user identity.
@@ -19,8 +19,8 @@ logger = logging.getLogger("defernowork-mcp")
 
 
 @dataclass(frozen=True)
-class KanidmIdentity:
-    """Identity extracted from a Kanidm ID token."""
+class OidcIdentity:
+    """Identity extracted from an OIDC ID token."""
     subject: str
     username: str
     display_name: str
@@ -28,21 +28,21 @@ class KanidmIdentity:
 
 
 @dataclass(frozen=True)
-class KanidmPKCE:
+class OidcPKCE:
     """PKCE challenge + verifier pair."""
     verifier: str
     challenge: str
 
     @staticmethod
-    def generate() -> KanidmPKCE:
+    def generate() -> OidcPKCE:
         verifier = secrets.token_urlsafe(64)
         digest = hashlib.sha256(verifier.encode("ascii")).digest()
         challenge = urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
-        return KanidmPKCE(verifier=verifier, challenge=challenge)
+        return OidcPKCE(verifier=verifier, challenge=challenge)
 
 
-class KanidmOIDCClient:
-    """Async OIDC client that talks to Kanidm."""
+class OidcClient:
+    """Async OIDC client that talks to the upstream identity provider."""
 
     def __init__(
         self,
@@ -72,10 +72,10 @@ class KanidmOIDCClient:
     async def authorization_url(
         self,
         state: str,
-        pkce: KanidmPKCE,
+        pkce: OidcPKCE,
         scopes: list[str] | None = None,
     ) -> str:
-        """Build the Kanidm authorize URL with PKCE."""
+        """Build the OIDC authorize URL with PKCE."""
         disc = await self._discover()
         endpoint = disc["authorization_endpoint"]
         scope_str = " ".join(scopes or ["openid", "email", "profile"])
@@ -96,8 +96,8 @@ class KanidmOIDCClient:
         self,
         code: str,
         pkce_verifier: str,
-    ) -> KanidmIdentity:
-        """Exchange a Kanidm authorization code for an ID token and extract identity."""
+    ) -> OidcIdentity:
+        """Exchange an OIDC authorization code for an ID token and extract identity."""
         disc = await self._discover()
         token_endpoint = disc["token_endpoint"]
 
@@ -131,7 +131,7 @@ class KanidmOIDCClient:
         ui_resp.raise_for_status()
         claims = ui_resp.json()
 
-        return KanidmIdentity(
+        return OidcIdentity(
             subject=claims.get("sub", ""),
             username=claims.get("preferred_username", claims.get("sub", "")),
             display_name=claims.get("name", claims.get("preferred_username", "")),

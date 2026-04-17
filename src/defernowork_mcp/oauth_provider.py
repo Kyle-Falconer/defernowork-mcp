@@ -1,12 +1,12 @@
-"""OAuth 2.0 Authorization Server provider that delegates identity to Kanidm.
+"""OAuth 2.0 Authorization Server provider that delegates identity to the upstream OIDC provider.
 
 Implements the ``OAuthAuthorizationServerProvider`` protocol from the MCP library.
 All persistent state is stored in Redis via ``RedisStore``.
 
 Flow overview:
-  1. Client calls /authorize → we redirect to Kanidm
-  2. User authenticates on Kanidm → Kanidm redirects to our callback
-  3. Callback exchanges Kanidm code, obtains Deferno session, issues MCP auth code
+  1. Client calls /authorize → we redirect to the upstream identity provider
+  2. User authenticates → the upstream provider redirects to our callback
+  3. Callback exchanges the OIDC code, obtains Deferno session, issues MCP auth code
   4. Client exchanges auth code at /token → we return access + refresh tokens
 """
 
@@ -30,7 +30,7 @@ from mcp.server.auth.provider import (
 )
 from mcp.shared.auth import OAuthClientInformationFull
 
-from .kanidm_oidc import KanidmOIDCClient, KanidmPKCE
+from .oidc_client import OidcClient, OidcPKCE
 from .redis_store import (
     ACCESS_TOKEN_TTL,
     REFRESH_TOKEN_TTL,
@@ -42,12 +42,12 @@ logger = logging.getLogger("defernowork-mcp")
 
 
 class DefernoOAuthProvider:
-    """MCP OAuth AS backed by Kanidm (identity) and Redis (state)."""
+    """MCP OAuth AS backed by an upstream OIDC provider (identity) and Redis (state)."""
 
     def __init__(
         self,
         store: RedisStore,
-        kanidm: KanidmOIDCClient,
+        kanidm: OidcClient,
         backend_internal_url: str,
     ) -> None:
         self.store = store
@@ -78,13 +78,13 @@ class DefernoOAuthProvider:
         client: OAuthClientInformationFull,
         params: AuthorizationParams,
     ) -> str:
-        """Redirect user to Kanidm for authentication.
+        """Redirect user to the upstream OIDC provider for authentication.
 
-        Stores the MCP authorization params in Redis so the Kanidm callback
+        Stores the MCP authorization params in Redis so the OIDC callback
         can complete the flow.
         """
         nonce = secrets.token_hex(20)
-        pkce = KanidmPKCE.generate()
+        pkce = OidcPKCE.generate()
 
         await self.store.save_pending_auth(nonce, {
             # MCP client's original params (need these to issue the auth code)
@@ -96,25 +96,25 @@ class DefernoOAuthProvider:
             "scopes": params.scopes,
             "code_challenge": params.code_challenge,
             "resource": params.resource,
-            # Kanidm PKCE state (to exchange the Kanidm code later)
+            # OIDC PKCE state (to exchange the OIDC code later)
             "kanidm_pkce_verifier": pkce.verifier,
         })
 
-        # Build the Kanidm authorization URL.  The nonce is our state param
+        # Build the OIDC authorization URL.  The nonce is our state param
         # so the callback can look up the pending auth.
         return await self.kanidm.authorization_url(
             state=nonce,
             pkce=pkce,
         )
 
-    # ── Kanidm callback (called from oauth_callback.py route) ────────
+    # ── OIDC callback (called from oauth_callback.py route) ────────
 
     async def handle_kanidm_callback(
         self,
         kanidm_state: str,
         kanidm_code: str,
     ) -> tuple[str, str, str | None]:
-        """Process the Kanidm redirect and return (mcp_auth_code, redirect_uri, state).
+        """Process the OIDC redirect and return (mcp_auth_code, redirect_uri, state).
 
         This is called by the Starlette callback route, not by the MCP framework.
         """
@@ -123,13 +123,13 @@ class DefernoOAuthProvider:
         if pending is None:
             raise ValueError("Unknown or expired authorization session")
 
-        # 2. Exchange Kanidm code for identity
+        # 2. Exchange OIDC code for identity
         identity = await self.kanidm.exchange_code(
             code=kanidm_code,
             pkce_verifier=pending["kanidm_pkce_verifier"],
         )
         logger.info(
-            "Kanidm identity: sub=%s user=%s",
+            "OIDC identity: sub=%s user=%s",
             identity.subject, identity.username,
         )
 
