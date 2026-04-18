@@ -104,9 +104,9 @@ def register(
     ) -> str:
         """Patch mutable fields on a task.
 
-        ``status`` must be one of ``open``, ``in-progress``, ``done``,
-        ``dropped``, ``pruned``. The backend rejects completing a task
-        while any of its children are still active.
+        ``status`` must be one of ``open``, ``in-progress``, ``in-review``,
+        ``done``, ``dropped``, ``pruned``. The backend rejects completing a
+        task while any of its children are still active.
 
         Pass ``None`` explicitly to clear a field (e.g. ``complete_by=None``
         removes the deadline). Omitting a parameter leaves it unchanged.
@@ -163,7 +163,7 @@ def register(
     async def set_task_status(task_id: str, status: str, ctx: Context = None) -> str:
         """Convenience wrapper around ``update_task`` for status changes.
 
-        Accepts ``open``, ``in-progress``, ``done``, ``dropped``, ``pruned``.
+        Accepts ``open``, ``in-progress``, ``in-review``, ``done``, ``dropped``, ``pruned``.
         """
         async with (await get_client(ctx=ctx)) as client:
             try:
