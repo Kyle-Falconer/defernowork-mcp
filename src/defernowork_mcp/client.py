@@ -160,6 +160,30 @@ class DefernoClient:
     async def list_tasks(self) -> list[dict[str, Any]]:
         return await self._request("GET", "/tasks")
 
+    async def search_tasks(
+        self,
+        query: str,
+        *,
+        status: str | None = None,
+        label: str | None = None,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        parent_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params = {"q": query}
+        if status is not None:
+            params["status"] = status
+        if label is not None:
+            params["label"] = label
+        if from_date is not None:
+            params["from"] = from_date
+        if to_date is not None:
+            params["to"] = to_date
+        if parent_id is not None:
+            params["parent_id"] = parent_id
+        qs = "&".join(f"{k}={v}" for k, v in params.items())
+        return await self._request("GET", f"/tasks/search?{qs}")
+
     async def get_task(self, task_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/tasks/{task_id}")
 

@@ -34,6 +34,43 @@ def register(
         return json.dumps(tasks)
 
     @mcp.tool()
+    async def search_tasks(
+        query: str,
+        status: str | None = None,
+        label: str | None = None,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        parent_id: str | None = None,
+        ctx: Context = None,
+    ) -> str:
+        """Search tasks by title, description, or label.
+
+        Full-text search with optional filters. Prefer this over
+        ``list_tasks`` when looking for specific tasks.
+
+        Args:
+            query: Search query (min 2 characters). Searches title and description.
+            status: Filter by status (open, in-progress, in-review, done, dropped).
+            label: Filter by label tag.
+            from_date: Filter tasks due on or after this ISO 8601 date.
+            to_date: Filter tasks due on or before this ISO 8601 date.
+            parent_id: Scope search to children of this task (UUID).
+        """
+        async with (await get_client(ctx=ctx)) as client:
+            try:
+                tasks = await client.search_tasks(
+                    query,
+                    status=status,
+                    label=label,
+                    from_date=from_date,
+                    to_date=to_date,
+                    parent_id=parent_id,
+                )
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps(tasks)
+
+    @mcp.tool()
     async def get_task(task_id: str, ctx: Context = None) -> str:
         """Fetch a single task by id (UUID)."""
         async with (await get_client(ctx=ctx)) as client:
