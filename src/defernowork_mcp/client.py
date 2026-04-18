@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 
@@ -181,7 +182,7 @@ class DefernoClient:
             params["to"] = to_date
         if parent_id is not None:
             params["parent_id"] = parent_id
-        qs = "&".join(f"{k}={v}" for k, v in params.items())
+        qs = urlencode(params)
         return await self._request("GET", f"/tasks/search?{qs}")
 
     async def get_task(self, task_id: str) -> dict[str, Any]:
