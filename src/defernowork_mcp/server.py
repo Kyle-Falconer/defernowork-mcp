@@ -200,7 +200,7 @@ def create_server(http_transport: bool = False) -> FastMCP:
         redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
         _redis_store = RedisStore(redis_url)
 
-        mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://deferno.work/mcp")
+        mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://app.defernowork.com/mcp")
         oidc_callback_url = f"{mcp_public_url}/oauth/oidc-callback"
 
         oidc = OidcClient(
@@ -362,7 +362,7 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
         #
         # We also serve /.well-known/openid-configuration as an alias for
         # clients (like Claude.ai's connector) that use OIDC discovery.
-        mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://deferno.work/mcp")
+        mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://app.defernowork.com/mcp")
         _oauth_metadata = {
             "issuer": mcp_public_url,
             "authorization_endpoint": f"{mcp_public_url}/authorize",
