@@ -91,6 +91,7 @@ def register(
         productive: float | None = None,
         desire: float | None = None,
         recurrence: dict[str, Any] | None = None,
+        recurring_type: str | None = None,
         ctx: Context = None,
     ) -> str:
         """Create a new task.
@@ -102,6 +103,10 @@ def register(
         ``recurrence`` sets a repeat schedule. Use ``{"type": "daily"}``,
         ``{"type": "every_n_days", "n": 3}``, or
         ``{"type": "weekly", "days": ["Mon", "Wed", "Fri"]}``.
+        ``recurring_type`` controls behavior when a recurring task is missed.
+        Must be one of ``"chore"`` (lingers until done, default),
+        ``"habit"`` (fresh start each day), or ``"event"`` (time-bound,
+        can't be made up). Only meaningful when ``recurrence`` is set.
         """
         payload = compact(
             {
@@ -114,6 +119,7 @@ def register(
                 "productive": productive,
                 "desire": desire,
                 "recurrence": recurrence,
+                "recurring_type": recurring_type,
             }
         )
         async with (await get_client(ctx=ctx)) as client:
@@ -137,6 +143,7 @@ def register(
         recurrence: dict[str, Any] | None = unset,
         recurring_scope: str | None = unset,
         recurrence_id: str | None = unset,
+        recurring_type: str | None = unset,
         ctx: Context = None,
     ) -> str:
         """Patch mutable fields on a task.
@@ -149,6 +156,9 @@ def register(
         removes the deadline). Omitting a parameter leaves it unchanged.
 
         ``recurrence`` sets or clears a repeat schedule (see ``create_task``).
+
+        ``recurring_type`` can be ``"chore"``, ``"habit"``, or ``"event"``
+        (see ``create_task`` for details). Pass ``None`` to clear.
 
         For recurring tasks, if you change title, description, labels, or
         complete_by, you MUST also provide ``recurring_scope``:
@@ -172,6 +182,7 @@ def register(
                 "recurrence": recurrence,
                 "recurring_scope": recurring_scope,
                 "recurrence_id": recurrence_id,
+                "recurring_type": recurring_type,
             }
         )
         async with (await get_client(ctx=ctx)) as client:
