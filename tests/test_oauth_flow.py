@@ -18,7 +18,7 @@ from urllib.parse import urlencode, urlparse, parse_qs
 import httpx
 import pytest
 
-MCP_BASE_URL = os.environ.get("MCP_BASE_URL", "https://defernowork.com")
+MCP_BASE_URL = os.environ.get("MCP_BASE_URL", "https://app.defernowork.com")
 
 
 @pytest.fixture
