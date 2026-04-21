@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
     tags: ["v*"]
 
 jobs:
@@ -42,7 +42,8 @@ jobs:
         with:
           images: ghcr.io/kyle-falconer/defernowork-mcp
           tags: |
-            type=raw,value=latest
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
@@ -64,10 +65,10 @@ jobs:
 
   deploy:
     name: Deploy to DigitalOcean
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
     needs: docker
     runs-on: ubuntu-latest
-    environment: DigitalOcean
+    environment: ${{ github.ref == 'refs/heads/main' && 'DigitalOcean' || 'DigitalOcean-staging' }}
     steps:
       - name: Restart MCP service on droplet
         uses: appleboy/ssh-action@v1
