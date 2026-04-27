@@ -1,7 +1,8 @@
-"""Tests for the OAuth-based multi-user authentication.
+"""Tests for the RedisStore — the OAuth provider's storage layer.
 
-Tests the RedisStore and DefernoOAuthProvider in isolation using
-a mock Redis (or fakeredis if available, otherwise plain dict mock).
+Uses an in-memory FakeRedis to exercise client/auth-code/access-token/
+refresh-token persistence and multi-user isolation. The token-generation
+helpers and stdio-mode tests live in test_helpers.py.
 """
 
 from __future__ import annotations
