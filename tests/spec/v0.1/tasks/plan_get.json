@@ -1,0 +1,26 @@
+{
+  "operation": "tasks.plan_get",
+  "method": "GET",
+  "path_template": "/tasks/plan",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {"id": "uuid", "title": "string", "status": "string", "_required": ["id", "title", "status"]}
+      ],
+      "example": [
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "title": "Demo",
+          "status": "open"
+        }
+      ]
+    }
+  ],
+  "client_method": "get_daily_plan",
+  "client_args_from_example": [],
+  "mcp_tool": "get_daily_plan",
+  "mcp_tool_args_from_example": []
+}

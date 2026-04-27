@@ -1,0 +1,30 @@
+{
+  "operation": "tasks.plan_reorder",
+  "method": "POST",
+  "path_template": "/tasks/plan/reorder",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["task_ids"],
+      "optional": ["date"],
+      "example": {
+        "task_ids": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000002"
+        ]
+      }
+    }
+  },
+  "responses": [
+    {
+      "status": 204,
+      "shape": "null",
+      "example": null
+    }
+  ],
+  "client_method": "reorder_plan",
+  "client_args_from_example": ["task_ids"],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}
