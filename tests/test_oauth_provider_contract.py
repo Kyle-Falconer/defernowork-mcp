@@ -119,69 +119,82 @@ async def http_client(monkeypatch):
     monkeypatch.setenv("REDIS_URL", "redis://stub:6379")
 
     from defernowork_mcp import server as srv
-    mcp = srv.create_server(http_transport=True)
+    _orig_provider = srv._oauth_provider
+    _orig_store = srv._redis_store
+    _orig_http_mode = srv._http_transport_mode
+    try:
+        mcp = srv.create_server(http_transport=True)
 
-    if hasattr(mcp, "streamable_http_app"):
-        asgi = mcp.streamable_http_app()
-    else:
-        asgi = mcp.sse_app()
+        if hasattr(mcp, "streamable_http_app"):
+            asgi = mcp.streamable_http_app()
+        else:
+            asgi = mcp.sse_app()
 
-    # Mirror the custom route insertion from main_http() so our in-process app
-    # exposes the same overridden /.well-known/oauth-authorization-server that
-    # production does (excluding client_secret_basic, adding openid-configuration).
-    oauth_provider = srv._oauth_provider
-    if oauth_provider is not None:
-        try:
-            from starlette.applications import Starlette
-            from starlette.responses import JSONResponse
-            from starlette.routing import Route
+        # Mirror the custom route insertion from main_http() so our in-process app
+        # exposes the same overridden /.well-known/oauth-authorization-server that
+        # production does (excluding client_secret_basic, adding openid-configuration).
+        oauth_provider = srv._oauth_provider
+        if oauth_provider is not None:
+            try:
+                from starlette.applications import Starlette
+                from starlette.responses import JSONResponse
+                from starlette.routing import Route
 
-            mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://app.defernowork.com/mcp")
-            _oauth_metadata = {
-                "issuer": mcp_public_url,
-                "authorization_endpoint": f"{mcp_public_url}/authorize",
-                "token_endpoint": f"{mcp_public_url}/token",
-                "registration_endpoint": f"{mcp_public_url}/register",
-                "revocation_endpoint": f"{mcp_public_url}/revoke",
-                "scopes_supported": ["tasks:read", "tasks:write", "plan:read", "plan:write", "profile:read"],
-                "response_types_supported": ["code"],
-                "grant_types_supported": ["authorization_code", "refresh_token"],
-                "token_endpoint_auth_methods_supported": ["client_secret_post"],
-                "revocation_endpoint_auth_methods_supported": ["client_secret_post"],
-                "code_challenge_methods_supported": ["S256"],
-            }
+                mcp_public_url = os.environ.get("MCP_PUBLIC_URL", "https://app.defernowork.com/mcp")
+                _oauth_metadata = {
+                    "issuer": mcp_public_url,
+                    "authorization_endpoint": f"{mcp_public_url}/authorize",
+                    "token_endpoint": f"{mcp_public_url}/token",
+                    "registration_endpoint": f"{mcp_public_url}/register",
+                    "revocation_endpoint": f"{mcp_public_url}/revoke",
+                    "scopes_supported": ["tasks:read", "tasks:write", "plan:read", "plan:write", "profile:read"],
+                    "response_types_supported": ["code"],
+                    "grant_types_supported": ["authorization_code", "refresh_token"],
+                    "token_endpoint_auth_methods_supported": ["client_secret_post"],
+                    "revocation_endpoint_auth_methods_supported": ["client_secret_post"],
+                    "code_challenge_methods_supported": ["S256"],
+                }
 
-            async def oauth_metadata_handler(request):
-                return JSONResponse(_oauth_metadata)
+                async def oauth_metadata_handler(request):
+                    return JSONResponse(_oauth_metadata)
 
-            if isinstance(asgi, Starlette):
-                asgi.routes.insert(0,
-                    Route("/.well-known/oauth-authorization-server", oauth_metadata_handler, methods=["GET"]),
-                )
-                asgi.routes.insert(1,
-                    Route("/.well-known/openid-configuration", oauth_metadata_handler, methods=["GET"]),
-                )
-        except ImportError:
-            pass  # starlette not available; tests that depend on custom metadata may skip/fail
+                if isinstance(asgi, Starlette):
+                    asgi.routes.insert(0,
+                        Route("/.well-known/oauth-authorization-server", oauth_metadata_handler, methods=["GET"]),
+                    )
+                    asgi.routes.insert(1,
+                        Route("/.well-known/openid-configuration", oauth_metadata_handler, methods=["GET"]),
+                    )
+            except ImportError:
+                pass  # starlette not available; tests that depend on custom metadata may skip/fail
 
-    transport = httpx.ASGITransport(app=asgi)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
+        transport = httpx.ASGITransport(app=asgi)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            yield client
+    finally:
+        srv._oauth_provider = _orig_provider
+        srv._redis_store = _orig_store
+        srv._http_transport_mode = _orig_http_mode
 
 
 # ── parametrized fixture-driven coverage ────────────────────────────────────
 
 
-def _oauth_fixture_ids():
-    return [f.operation for f in discover_oauth_fixtures()]
+def _oauth_smoke_params():
+    out = []
+    for f in discover_oauth_fixtures():
+        marks = []
+        if f.operation == "oauth.prm_metadata":
+            marks.append(pytest.mark.xfail(
+                reason="RFC 9728 PRM endpoint not yet wired up — see test_prm_required_keys",
+                strict=False,
+            ))
+        out.append(pytest.param(f, marks=marks, id=f.operation))
+    return out
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "fixture",
-    discover_oauth_fixtures(),
-    ids=_oauth_fixture_ids(),
-)
+@pytest.mark.parametrize("fixture", _oauth_smoke_params())
 async def test_endpoint_exists(fixture, http_client: httpx.AsyncClient):
     """Smoke test: each documented OAuth endpoint responds with a known status.
 
@@ -218,7 +231,7 @@ async def test_endpoint_exists(fixture, http_client: httpx.AsyncClient):
         pytest.skip(f"unsupported method {fixture.method}")
 
     expected_statuses = {r["status"] for r in fixture.responses}
-    assert response.status_code in expected_statuses or response.status_code in {302, 400, 401, 404, 405}, (
+    assert response.status_code in expected_statuses or response.status_code in {302, 400, 401, 405}, (
         f"{fixture.operation}: unexpected status {response.status_code}, "
         f"expected one of {expected_statuses}, body={response.text[:200]}"
     )
