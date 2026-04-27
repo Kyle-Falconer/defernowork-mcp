@@ -1,0 +1,39 @@
+{
+  "operation": "tasks.move",
+  "method": "POST",
+  "path_template": "/tasks/{id}/move",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["new_parent_id"],
+      "optional": ["position"],
+      "example": {
+        "new_parent_id": "00000000-0000-0000-0000-000000000002",
+        "position": 0
+      }
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "id": "uuid",
+        "parent_id": "any"
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "parent_id": "00000000-0000-0000-0000-000000000002"
+      }
+    },
+    {
+      "status": 400,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "validation_error", "message": "cannot move task under its descendant"}
+    }
+  ],
+  "client_method": "move_task",
+  "client_args_from_example": ["new_parent_id", "position"],
+  "mcp_tool": "move_task",
+  "mcp_tool_args_from_example": ["new_parent_id", "position"]
+}
