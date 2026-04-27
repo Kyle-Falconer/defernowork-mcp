@@ -1,0 +1,50 @@
+{
+  "operation": "tasks.create",
+  "method": "POST",
+  "path_template": "/tasks",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["title"],
+      "optional": [
+        "description", "labels", "parent_id", "complete_by",
+        "desire", "productive", "mood_start", "recurrence", "next_task_id"
+      ],
+      "example": {"title": "Demo", "description": "Test"}
+    }
+  },
+  "responses": [
+    {
+      "status": 201,
+      "shape": {
+        "id": "uuid",
+        "title": "string",
+        "status": "string",
+        "actions": "array",
+        "date_created": "datetime"
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "title": "Demo",
+        "status": "open",
+        "actions": [{"kind": "Created"}],
+        "date_created": "2026-04-27T00:00:00Z"
+      }
+    },
+    {
+      "status": 400,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "validation_error", "message": "title must be non-empty"}
+    },
+    {
+      "status": 401,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "unauthorized", "message": "missing or invalid token"}
+    }
+  ],
+  "client_method": "create_task",
+  "client_args_from_example": ["title", "description"],
+  "mcp_tool": "create_task",
+  "mcp_tool_args_from_example": ["title", "description"]
+}

@@ -1,0 +1,41 @@
+{
+  "operation": "tasks.list",
+  "method": "GET",
+  "path_template": "/tasks",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {
+          "id": "uuid",
+          "title": "string",
+          "status": "string",
+          "labels": ["string"],
+          "parent_id": "any",
+          "children": ["uuid"],
+          "date_created": "datetime",
+          "pinned": "boolean",
+          "_required": ["id", "title", "status", "labels", "children", "date_created", "pinned"]
+        }
+      ],
+      "example": [
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "title": "Demo",
+          "status": "open",
+          "labels": [],
+          "parent_id": null,
+          "children": [],
+          "date_created": "2026-04-27T00:00:00Z",
+          "pinned": false
+        }
+      ]
+    }
+  ],
+  "client_method": "list_tasks",
+  "client_args_from_example": [],
+  "mcp_tool": "list_tasks",
+  "mcp_tool_args_from_example": []
+}

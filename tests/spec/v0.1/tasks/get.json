@@ -1,0 +1,39 @@
+{
+  "operation": "tasks.get",
+  "method": "GET",
+  "path_template": "/tasks/{id}",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "id": "uuid",
+        "title": "string",
+        "description": "string",
+        "status": "string",
+        "labels": ["string"],
+        "actions": "array",
+        "date_created": "datetime"
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "title": "Demo",
+        "description": "",
+        "status": "open",
+        "labels": [],
+        "actions": [],
+        "date_created": "2026-04-27T00:00:00Z"
+      }
+    },
+    {
+      "status": 404,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "not_found", "message": "task not found"}
+    }
+  ],
+  "client_method": "get_task",
+  "client_args_from_example": [],
+  "mcp_tool": "get_task",
+  "mcp_tool_args_from_example": []
+}
