@@ -1,0 +1,39 @@
+{
+  "operation": "internal.mcp_session",
+  "method": "POST",
+  "path_template": "/internal/mcp-session",
+  "auth": "internal-shared-secret",
+  "request": {
+    "body": {
+      "required": ["oidc_subject"],
+      "optional": ["username", "display_name"],
+      "example": {
+        "oidc_subject": "zitadel-subject-123",
+        "username": "alice",
+        "display_name": "Alice"
+      }
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "token": "string",
+        "user_id": "uuid"
+      },
+      "example": {
+        "token": "deferno_xxxxxxxxxxxxxxxx",
+        "user_id": "00000000-0000-0000-0000-000000000001"
+      }
+    },
+    {
+      "status": 401,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "unauthorized", "message": "invalid shared secret"}
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

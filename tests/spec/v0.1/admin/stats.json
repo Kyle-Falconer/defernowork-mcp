@@ -1,0 +1,21 @@
+{
+  "operation": "admin.stats",
+  "method": "GET",
+  "path_template": "/admin/stats",
+  "auth": "bearer-admin",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "redis_keys": "number",
+        "redis_memory_bytes": "number"
+      },
+      "example": {"redis_keys": 100, "redis_memory_bytes": 1048576}
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}
