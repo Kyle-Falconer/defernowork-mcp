@@ -1,0 +1,21 @@
+{
+  "operation": "auth.oidc_login",
+  "method": "GET",
+  "path_template": "/auth/oidc/login",
+  "auth": "none",
+  "request": {},
+  "responses": [
+    {
+      "status": 200,
+      "shape": {"authorize_url": "string", "state": "string"},
+      "example": {
+        "authorize_url": "https://auth.deferno.work/oauth/v2/authorize?client_id=...",
+        "state": "abc123"
+      }
+    }
+  ],
+  "client_method": "oidc_login",
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

@@ -1,0 +1,25 @@
+{
+  "operation": "oauth.prm_metadata",
+  "method": "GET",
+  "path_template": "/.well-known/oauth-protected-resource",
+  "auth": "none",
+  "request": {},
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "resource": "string",
+        "authorization_servers": ["string"]
+      },
+      "example": {
+        "resource": "https://app.defernowork.com/mcp",
+        "authorization_servers": ["https://app.defernowork.com/mcp"]
+      }
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": [],
+  "notes": "RFC 9728 — Protected Resource Metadata."
+}

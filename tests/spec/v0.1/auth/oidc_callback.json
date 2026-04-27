@@ -1,0 +1,31 @@
+{
+  "operation": "auth.oidc_callback",
+  "method": "GET",
+  "path_template": "/auth/oidc/callback",
+  "auth": "none",
+  "request": {
+    "query": {
+      "required": ["state", "code"],
+      "example": {"state": "abc123", "code": "xyz789"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {"token": "string", "user": "object"},
+      "example": {
+        "token": "deferno_xxxxxxxxxxxxxxxx",
+        "user": {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "username": "alice",
+          "display_name": "Alice",
+          "is_admin": false
+        }
+      }
+    }
+  ],
+  "client_method": "oidc_callback",
+  "client_args_from_example": ["state", "code"],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

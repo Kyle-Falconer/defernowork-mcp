@@ -11,11 +11,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
+      - name: Check out Deferno sibling repo for architecture.md
+        uses: actions/checkout@v5
+        with:
+          repository: Kyle-Falconer/Deferno
+          path: Deferno
+          fetch-depth: 1
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - run: pip install ".[test]"
-      - run: pytest -v
+
+      - name: Run default suite (excludes 'live' marker)
+        env:
+          ARCHITECTURE_DOC_PATH: ${{ github.workspace }}/Deferno/docs/architecture.md
+        run: pytest -v -m "not live"
 
   docker:
     name: Build & push Docker image

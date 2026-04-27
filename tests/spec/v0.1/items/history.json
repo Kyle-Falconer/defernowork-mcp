@@ -1,0 +1,20 @@
+{
+  "operation": "items.history",
+  "method": "GET",
+  "path_template": "/items/{id}/history",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {"kind": "string", "at": "datetime", "_required": ["kind", "at"]}
+      ],
+      "example": [{"kind": "Created", "at": "2026-04-27T00:00:00Z"}]
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

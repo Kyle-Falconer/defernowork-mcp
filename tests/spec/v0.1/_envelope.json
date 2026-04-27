@@ -1,0 +1,21 @@
+{
+  "envelope_version": "0.1",
+  "success_shape": {
+    "version": "string",
+    "data": "any",
+    "error": "null"
+  },
+  "error_shape": {
+    "version": "string",
+    "data": "null",
+    "error": {
+      "code": "string",
+      "message": "string",
+      "_required": ["code", "message"]
+    }
+  },
+  "version_validation": {
+    "supported": ["0.1"],
+    "behavior_on_mismatch": "raise DefernoError(status=502, message=~'unsupported API version')"
+  }
+}

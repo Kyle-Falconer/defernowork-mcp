@@ -1,0 +1,19 @@
+{
+  "operation": "auth.logout",
+  "method": "POST",
+  "path_template": "/auth/logout",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": {"logout_url": "string"},
+      "example": {"logout_url": "https://auth.deferno.work/oidc/v1/end_session?id_token_hint=..."}
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": [],
+  "notes": "Backend returns logout_url, but DefernoClient.logout() discards the body and returns None. Tracked as a feature gap; client_method intentionally null until the MCP surfaces it."
+}

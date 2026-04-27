@@ -8,14 +8,17 @@ from urllib.parse import urlencode
 
 import httpx
 
+SUPPORTED_API_VERSION = "0.1"
+
 
 class DefernoError(RuntimeError):
     """Raised when the Deferno backend returns an error response."""
 
-    def __init__(self, status_code: int, message: str) -> None:
+    def __init__(self, status_code: int, message: str, code: str | None = None) -> None:
         super().__init__(f"{status_code}: {message}")
         self.status_code = status_code
         self.message = message
+        self.code = code
 
 
 class DefernoClient:
@@ -94,12 +97,41 @@ class DefernoClient:
         try:
             payload = response.json()
         except ValueError:
-            payload = {"message": response.text}
+            # Non-JSON body (e.g. HTML error page). Surface raw text.
+            raise DefernoError(
+                response.status_code,
+                response.text or response.reason_phrase or "error",
+            )
+
+        # All v0.1 responses must be envelope-shaped: {version, data, error}
+        if not isinstance(payload, dict) or "version" not in payload:
+            raise DefernoError(
+                502,
+                f"backend response missing required 'version' field: {payload!r}",
+            )
+
+        version = payload["version"]
+        if version != SUPPORTED_API_VERSION:
+            raise DefernoError(
+                502,
+                f"unsupported API version: backend reported {version!r}, "
+                f"client supports {SUPPORTED_API_VERSION!r}",
+            )
+
+        error = payload.get("error")
+        if error is not None:
+            code = None
+            message = response.reason_phrase or "error"
+            if isinstance(error, dict):
+                code = error.get("code")
+                message = error.get("message", message)
+            raise DefernoError(response.status_code, message, code=code)
 
         if not (200 <= response.status_code < 300):
-            message = payload.get("message") if isinstance(payload, dict) else str(payload)
-            raise DefernoError(response.status_code, message or response.reason_phrase or "error")
-        return payload
+            # Status is non-2xx but envelope says no error — defensive fallback.
+            raise DefernoError(response.status_code, response.reason_phrase or "error")
+
+        return payload.get("data")
 
     # ------------------------------------------------------------------ auth
     async def oidc_login(self) -> dict[str, Any]:

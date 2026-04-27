@@ -1,0 +1,35 @@
+{
+  "operation": "auth.me_patch",
+  "method": "PATCH",
+  "path_template": "/auth/me",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": ["display_name"],
+      "example": {"display_name": "Alice Renamed"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "id": "uuid",
+        "username": "string",
+        "display_name": "string",
+        "is_admin": "boolean"
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "username": "alice",
+        "display_name": "Alice Renamed",
+        "is_admin": false
+      }
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

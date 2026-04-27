@@ -1,0 +1,37 @@
+{
+  "operation": "tasks.mood_history",
+  "method": "GET",
+  "path_template": "/tasks/mood-history",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {
+          "task_id": "uuid",
+          "title": "string",
+          "finished_at": "datetime",
+          "productive": "any",
+          "mood_start": "any",
+          "mood_finish": "any",
+          "_required": ["task_id", "title", "finished_at"]
+        }
+      ],
+      "example": [
+        {
+          "task_id": "00000000-0000-0000-0000-000000000001",
+          "title": "Demo",
+          "finished_at": "2026-04-27T00:00:00Z",
+          "productive": 0.5,
+          "mood_start": null,
+          "mood_finish": null
+        }
+      ]
+    }
+  ],
+  "client_method": "mood_history",
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

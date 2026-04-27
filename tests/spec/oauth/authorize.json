@@ -1,0 +1,34 @@
+{
+  "operation": "oauth.authorize",
+  "method": "GET",
+  "path_template": "/authorize",
+  "auth": "none",
+  "request": {
+    "query": {
+      "required": ["response_type", "client_id", "redirect_uri", "code_challenge", "code_challenge_method"],
+      "optional": ["scope", "state"],
+      "example": {
+        "response_type": "code",
+        "client_id": "deferno-mcp-abc123",
+        "redirect_uri": "http://localhost:8765/callback",
+        "code_challenge": "abc",
+        "code_challenge_method": "S256",
+        "scope": "tasks:read",
+        "state": "xyz"
+      }
+    }
+  },
+  "responses": [
+    {
+      "status": 302,
+      "shape": "any",
+      "example": null,
+      "headers_required": ["Location"]
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": [],
+  "notes": "Redirects to upstream OIDC (Zitadel) authorize endpoint."
+}

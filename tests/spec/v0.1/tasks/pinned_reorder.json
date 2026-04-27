@@ -1,0 +1,35 @@
+{
+  "operation": "tasks.pinned_reorder",
+  "method": "POST",
+  "path_template": "/tasks/pinned/reorder",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["task_ids"],
+      "optional": [],
+      "example": {
+        "task_ids": [
+          "00000000-0000-0000-0000-000000000001",
+          "00000000-0000-0000-0000-000000000002"
+        ]
+      }
+    }
+  },
+  "responses": [
+    {
+      "status": 204,
+      "shape": "null",
+      "example": null
+    },
+    {
+      "status": 400,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "validation_error", "message": "task is not pinned"}
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

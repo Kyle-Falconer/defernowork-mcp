@@ -1,0 +1,28 @@
+{
+  "operation": "tasks.pinned_get",
+  "method": "GET",
+  "path_template": "/tasks/pinned",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {
+          "task": {"id": "uuid", "title": "string", "_required": ["id", "title"]},
+          "label": "any"
+        }
+      ],
+      "example": [
+        {
+          "task": {"id": "00000000-0000-0000-0000-000000000001", "title": "Demo"},
+          "label": null
+        }
+      ]
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

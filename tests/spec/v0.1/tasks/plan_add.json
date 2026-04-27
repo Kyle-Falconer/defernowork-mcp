@@ -1,0 +1,25 @@
+{
+  "operation": "tasks.plan_add",
+  "method": "POST",
+  "path_template": "/tasks/plan/add",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["task_id"],
+      "optional": ["date"],
+      "example": {"task_id": "00000000-0000-0000-0000-000000000001"}
+    }
+  },
+  "responses": [
+    {
+      "status": 204,
+      "shape": "null",
+      "example": null
+    }
+  ],
+  "client_method": "add_to_plan",
+  "client_args_from_example": ["task_id"],
+  "mcp_tool": "add_to_plan",
+  "mcp_tool_args_from_example": ["task_id"]
+}

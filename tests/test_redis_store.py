@@ -1,7 +1,8 @@
-"""Tests for the OAuth-based multi-user authentication.
+"""Tests for the RedisStore — the OAuth provider's storage layer.
 
-Tests the RedisStore and DefernoOAuthProvider in isolation using
-a mock Redis (or fakeredis if available, otherwise plain dict mock).
+Uses an in-memory FakeRedis to exercise client/auth-code/access-token/
+refresh-token persistence and multi-user isolation. The token-generation
+helpers and stdio-mode tests live in test_helpers.py.
 """
 
 from __future__ import annotations
@@ -204,32 +205,3 @@ class TestRedisStoreIsolation:
         assert await store.load_deferno_token("bob-tok") == "bob-backend"
 
 
-# ---------------------------------------------------------------------------
-# Token generation
-# ---------------------------------------------------------------------------
-
-class TestTokenGeneration:
-    def test_generates_64_char_hex(self):
-        token = _generate_token()
-        assert len(token) == 64
-        int(token, 16)  # must be valid hex
-
-    def test_tokens_are_unique(self):
-        tokens = {_generate_token() for _ in range(100)}
-        assert len(tokens) == 100
-
-
-# ---------------------------------------------------------------------------
-# Stdio mode (no Redis)
-# ---------------------------------------------------------------------------
-
-class TestStdioMode:
-    @pytest.mark.asyncio
-    async def test_get_client_stdio_does_not_use_redis(self):
-        """In stdio mode, _get_client_async should use env/disk, not Redis."""
-        from defernowork_mcp import server as srv
-        srv._http_transport_mode = False
-        srv._redis_store = None
-        # Should not raise — resolves token from env or disk, not Redis
-        client = await srv._get_client_async()
-        assert client is not None

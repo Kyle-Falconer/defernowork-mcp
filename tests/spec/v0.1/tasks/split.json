@@ -1,0 +1,38 @@
+{
+  "operation": "tasks.split",
+  "method": "POST",
+  "path_template": "/tasks/{id}/split",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["first_title", "second_title"],
+      "optional": ["first_description", "second_description"],
+      "example": {
+        "first_title": "Step A",
+        "first_description": "",
+        "second_title": "Step B",
+        "second_description": ""
+      }
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "parent": {"id": "uuid", "kind": "string"},
+        "first_child": {"id": "uuid", "kind": "string"},
+        "second_child": {"id": "uuid", "kind": "string"}
+      },
+      "example": {
+        "parent": {"id": "00000000-0000-0000-0000-000000000001", "kind": "Task"},
+        "first_child": {"id": "00000000-0000-0000-0000-000000000002", "kind": "Task"},
+        "second_child": {"id": "00000000-0000-0000-0000-000000000003", "kind": "Task"}
+      }
+    }
+  ],
+  "client_method": "split_task",
+  "client_args_from_example": [],
+  "mcp_tool": "split_task",
+  "mcp_tool_args_from_example": []
+}

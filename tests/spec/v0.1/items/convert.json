@@ -1,0 +1,30 @@
+{
+  "operation": "items.convert",
+  "method": "POST",
+  "path_template": "/items/{id}/convert",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["to_kind"],
+      "optional": [],
+      "example": {"to_kind": "Habit"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {"kind": "string", "id": "uuid"},
+      "example": {"kind": "Habit", "id": "00000000-0000-0000-0000-000000000001"}
+    },
+    {
+      "status": 400,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "validation_error", "message": "cannot convert kind"}
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

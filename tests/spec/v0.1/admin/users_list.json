@@ -1,0 +1,27 @@
+{
+  "operation": "admin.users_list",
+  "method": "GET",
+  "path_template": "/admin/users",
+  "auth": "bearer-admin",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {"id": "uuid", "username": "string", "task_count": "number"}
+      ],
+      "example": [
+        {"id": "00000000-0000-0000-0000-000000000001", "username": "alice", "task_count": 5}
+      ]
+    },
+    {
+      "status": 403,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "forbidden", "message": "admin only"}
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

@@ -1,0 +1,37 @@
+{
+  "operation": "tasks.patch",
+  "method": "PATCH",
+  "path_template": "/tasks/{id}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": [
+        "title", "description", "status", "labels", "complete_by",
+        "desire", "productive", "mood_start", "mood_finish",
+        "recurrence", "next_task_id", "pinned"
+      ],
+      "example": {"status": "in-progress"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {"id": "uuid", "status": "string"},
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "status": "in-progress"
+      }
+    },
+    {
+      "status": 400,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "validation_error", "message": "cannot complete task with active children"}
+    }
+  ],
+  "client_method": "update_task",
+  "client_args_from_example": [],
+  "mcp_tool": "update_task",
+  "mcp_tool_args_from_example": []
+}

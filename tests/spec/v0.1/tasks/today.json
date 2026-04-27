@@ -1,0 +1,33 @@
+{
+  "operation": "tasks.today",
+  "method": "GET",
+  "path_template": "/tasks/today",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {
+          "id": "uuid",
+          "title": "string",
+          "status": "string",
+          "score": "number",
+          "_required": ["id", "title", "status", "score"]
+        }
+      ],
+      "example": [
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "title": "Demo",
+          "status": "open",
+          "score": 35.0
+        }
+      ]
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

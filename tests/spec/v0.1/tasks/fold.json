@@ -1,0 +1,37 @@
+{
+  "operation": "tasks.fold",
+  "method": "POST",
+  "path_template": "/tasks/{id}/fold",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["title"],
+      "optional": ["description", "labels", "desire", "productive", "complete_by"],
+      "example": {"title": "Next step", "description": ""}
+    }
+  },
+  "responses": [
+    {
+      "status": 201,
+      "shape": {
+        "original": {"id": "uuid", "next_task_id": "uuid"},
+        "next_task": {"id": "uuid", "title": "string"}
+      },
+      "example": {
+        "original": {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "next_task_id": "00000000-0000-0000-0000-000000000002"
+        },
+        "next_task": {
+          "id": "00000000-0000-0000-0000-000000000002",
+          "title": "Next step"
+        }
+      }
+    }
+  ],
+  "client_method": "fold_task",
+  "client_args_from_example": [],
+  "mcp_tool": "fold_task",
+  "mcp_tool_args_from_example": []
+}

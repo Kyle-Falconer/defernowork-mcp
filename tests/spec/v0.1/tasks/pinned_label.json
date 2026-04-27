@@ -1,0 +1,36 @@
+{
+  "operation": "tasks.pinned_label",
+  "method": "PATCH",
+  "path_template": "/tasks/pinned/{id}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": ["label"],
+      "example": {"label": "Sidebar Label"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "task": {"id": "uuid", "title": "string", "_required": ["id", "title"]},
+        "label": "any"
+      },
+      "example": {
+        "task": {"id": "00000000-0000-0000-0000-000000000001", "title": "Demo"},
+        "label": "Sidebar Label"
+      }
+    },
+    {
+      "status": 404,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "not_found", "message": "task is not pinned"}
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

@@ -1,0 +1,35 @@
+{
+  "operation": "auth.me_get",
+  "method": "GET",
+  "path_template": "/auth/me",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "id": "uuid",
+        "username": "string",
+        "display_name": "string",
+        "is_admin": "boolean"
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "username": "alice",
+        "display_name": "Alice",
+        "is_admin": false
+      }
+    },
+    {
+      "status": 401,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "unauthorized", "message": "missing or invalid token"}
+    }
+  ],
+  "client_method": "whoami",
+  "client_args_from_example": [],
+  "mcp_tool": "whoami",
+  "mcp_tool_args_from_example": []
+}
