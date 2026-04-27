@@ -73,6 +73,31 @@ def test_parse_ignores_unknown_table_header(tmp_path: Path):
     assert rows == []
 
 
+def test_parse_normalizes_axum_placeholders_to_braces(tmp_path: Path):
+    """Architecture.md uses both `:id` (Axum/Rust) and `{id}` (OpenAPI-ish)
+    notations. Normalize both to `{id}` so the cross-checker sees one form."""
+    md = tmp_path / "architecture.md"
+    md.write_text(
+        dedent("""
+            ### Items
+
+            | Method | Path | Auth | Description |
+            |---|---|---|---|
+            | `GET` | `/items/:id` | Yes | Single item |
+            | `GET` | `/tasks/:task_id/comments` | Yes | Task comments |
+            | `DELETE` | `/auth/tokens/{id}` | Yes | Revoke a token |
+        """).strip(),
+        encoding="utf-8",
+    )
+    rows = parse_architecture_md(md)
+    paths = sorted((r.method, r.path) for r in rows)
+    assert paths == [
+        ("DELETE", "/auth/tokens/{id}"),
+        ("GET", "/items/{id}"),
+        ("GET", "/tasks/{task_id}/comments"),
+    ]
+
+
 # ── fixtures-on-disk ────────────────────────────────────────────────────────
 
 

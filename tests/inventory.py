@@ -39,6 +39,7 @@ _HEADER_AUTH   = re.compile(r"^\s*\|\s*Method\s*\|\s*Path\s*\|\s*Auth\s*\|\s*Des
 _DIVIDER       = re.compile(r"^\s*\|\s*-+\s*(\|\s*-+\s*)+\|\s*$")
 _ROW           = re.compile(r"^\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*(?:\|\s*(.+?)\s*)?\|\s*$")
 _BACKTICK_STRIP = re.compile(r"^`+|`+$")
+_AXUM_PLACEHOLDER = re.compile(r":(\w+)")
 
 
 def parse_architecture_md(path: Path) -> list[DocEndpoint]:
@@ -64,6 +65,7 @@ def parse_architecture_md(path: Path) -> list[DocEndpoint]:
                 m = _ROW.match(lines[j])
                 method = _BACKTICK_STRIP.sub("", m.group(1)).upper()
                 path_str = _BACKTICK_STRIP.sub("", m.group(2))
+                path_str = _AXUM_PLACEHOLDER.sub(r"{\1}", path_str)
                 auth_yes = False
                 if has_auth:
                     auth_field = m.group(3).strip().lower()
