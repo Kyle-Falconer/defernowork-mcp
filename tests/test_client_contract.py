@@ -46,10 +46,20 @@ def _ids(fixtures: list[Fixture]) -> list[str]:
 
 
 def _example_args(fixture: Fixture) -> dict[str, Any]:
+    """Pull example arg values from request.body.example or request.query.example.
+
+    Body wins when present (POST/PATCH paths usually carry args in the body).
+    Query is the fallback for GET methods like /auth/oidc/callback whose args
+    are URL query parameters.
+    """
     body = fixture.request.get("body") or {}
-    example = body.get("example") or {}
+    body_example = body.get("example") or {}
+    query = fixture.request.get("query") or {}
+    query_example = query.get("example") or {}
     keys = fixture.client_args_from_example
-    return {k: example[k] for k in keys if k in example}
+    return {k: body_example.get(k, query_example.get(k))
+            for k in keys
+            if k in body_example or k in query_example}
 
 
 def _path_args(fixture: Fixture) -> tuple:
