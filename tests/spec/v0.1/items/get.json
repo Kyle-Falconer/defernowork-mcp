@@ -1,0 +1,23 @@
+{
+  "operation": "items.get",
+  "method": "GET",
+  "path_template": "/items/{id}",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": {"kind": "string", "id": "uuid", "title": "string"},
+      "example": {"kind": "Task", "id": "00000000-0000-0000-0000-000000000001", "title": "Demo"}
+    },
+    {
+      "status": 404,
+      "error_shape": {"code": "string", "message": "string"},
+      "error_example": {"code": "not_found", "message": "item not found"}
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

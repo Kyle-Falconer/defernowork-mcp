@@ -1,0 +1,25 @@
+{
+  "operation": "items.comments_create",
+  "method": "POST",
+  "path_template": "/items/{id}/comments",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {"required": ["body"], "optional": [], "example": {"body": "comment"}}
+  },
+  "responses": [
+    {
+      "status": 201,
+      "shape": {"id": "uuid", "body": "string", "created_at": "datetime"},
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000010",
+        "body": "comment",
+        "created_at": "2026-04-27T00:00:00Z"
+      }
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

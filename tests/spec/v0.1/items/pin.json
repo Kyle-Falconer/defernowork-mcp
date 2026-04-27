@@ -1,0 +1,29 @@
+{
+  "operation": "items.pin",
+  "method": "POST",
+  "path_template": "/items/{id}/pin",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["pinned"],
+      "optional": [],
+      "example": {"pinned": true}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {"kind": "string", "id": "uuid", "pinned": "boolean"},
+      "example": {
+        "kind": "Task",
+        "id": "00000000-0000-0000-0000-000000000001",
+        "pinned": true
+      }
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

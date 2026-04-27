@@ -1,0 +1,22 @@
+{
+  "operation": "items.list",
+  "method": "GET",
+  "path_template": "/items",
+  "auth": "bearer",
+  "request": {"headers_required": ["Authorization"]},
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {"kind": "string", "id": "uuid", "title": "string", "_required": ["kind", "id", "title"]}
+      ],
+      "example": [
+        {"kind": "Task", "id": "00000000-0000-0000-0000-000000000001", "title": "Demo"}
+      ]
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

@@ -1,0 +1,36 @@
+{
+  "operation": "items.split",
+  "method": "POST",
+  "path_template": "/items/{id}/split",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["first_title", "second_title"],
+      "optional": ["first_description", "second_description"],
+      "example": {
+        "first_title": "Step A",
+        "second_title": "Step B"
+      }
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "parent": {"kind": "string", "id": "uuid"},
+        "first_child": {"kind": "string", "id": "uuid"},
+        "second_child": {"kind": "string", "id": "uuid"}
+      },
+      "example": {
+        "parent": {"kind": "Habit", "id": "00000000-0000-0000-0000-000000000001"},
+        "first_child": {"kind": "Task", "id": "00000000-0000-0000-0000-000000000002"},
+        "second_child": {"kind": "Task", "id": "00000000-0000-0000-0000-000000000003"}
+      }
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}

@@ -1,0 +1,29 @@
+{
+  "operation": "items.merge",
+  "method": "POST",
+  "path_template": "/items/{id}/merge",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {"required": [], "optional": [], "example": {}}
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "parent": {"kind": "string", "id": "uuid"},
+        "merged_children": [{"kind": "string", "id": "uuid"}]
+      },
+      "example": {
+        "parent": {"kind": "Task", "id": "00000000-0000-0000-0000-000000000001"},
+        "merged_children": [
+          {"kind": "Task", "id": "00000000-0000-0000-0000-000000000002"}
+        ]
+      }
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": []
+}
