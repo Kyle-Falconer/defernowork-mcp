@@ -54,6 +54,9 @@ source = "vcs"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+markers = [
+    "live: integration test that hits real network/staging services (skipped by default)",
+]
 
 [tool.hatch.version.raw-options]
 fallback_version = "0.0.0.dev0"
