@@ -1,0 +1,37 @@
+{
+  "operation": "oauth.register",
+  "method": "POST",
+  "path_template": "/register",
+  "auth": "none",
+  "request": {
+    "body": {
+      "required": ["redirect_uris"],
+      "optional": ["client_name", "token_endpoint_auth_method", "grant_types", "response_types"],
+      "example": {
+        "redirect_uris": ["http://localhost:8765/callback"],
+        "client_name": "test client",
+        "token_endpoint_auth_method": "client_secret_post"
+      }
+    }
+  },
+  "responses": [
+    {
+      "status": 201,
+      "shape": {
+        "client_id": "string",
+        "client_secret": "any",
+        "redirect_uris": ["string"]
+      },
+      "example": {
+        "client_id": "deferno-mcp-abc123",
+        "client_secret": "secret-xyz",
+        "redirect_uris": ["http://localhost:8765/callback"]
+      }
+    }
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": [],
+  "notes": "client_secret is present when token_endpoint_auth_method=client_secret_post; absent for 'none'."
+}

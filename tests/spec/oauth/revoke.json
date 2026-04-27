@@ -1,0 +1,25 @@
+{
+  "operation": "oauth.revoke",
+  "method": "POST",
+  "path_template": "/revoke",
+  "auth": "none",
+  "request": {
+    "body": {
+      "required": ["token", "client_id"],
+      "optional": ["client_secret", "token_type_hint"],
+      "example": {
+        "token": "mcp_xxxxxxxxxxxxxxxx",
+        "client_id": "deferno-mcp-abc123",
+        "client_secret": "secret-xyz"
+      }
+    }
+  },
+  "responses": [
+    {"status": 200, "shape": "any", "example": null}
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": [],
+  "notes": "RFC 7009 — must return 200 for both valid and unknown tokens."
+}
