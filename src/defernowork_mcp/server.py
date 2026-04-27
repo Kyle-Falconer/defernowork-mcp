@@ -161,6 +161,8 @@ def _compact(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _format_error(exc: DefernoError) -> str:
+    if exc.code:
+        return f"Deferno API error {exc.status_code} [{exc.code}]: {exc.message}"
     return f"Deferno API error {exc.status_code}: {exc.message}"
 
 
