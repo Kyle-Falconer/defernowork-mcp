@@ -12,12 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check out Deferno sibling repo for architecture.md
+      - name: Check out Deferno sibling repo for architecture.md (optional)
+        id: checkout_deferno
+        continue-on-error: true
         uses: actions/checkout@v5
         with:
           repository: Kyle-Falconer/Deferno
           path: Deferno
           fetch-depth: 1
+          token: ${{ secrets.DEFERNO_REPO_TOKEN }}
 
       - uses: actions/setup-python@v5
         with:
@@ -27,6 +30,10 @@ jobs:
 
       - name: Run default suite (excludes 'live' marker)
         env:
+          # When DEFERNO_REPO_TOKEN is unset, the secondary checkout fails
+          # (continue-on-error) and this path doesn't exist; the inventory
+          # gate test self-skips with a clear reason. Setting the secret
+          # turns on drift enforcement in CI without any further changes.
           ARCHITECTURE_DOC_PATH: ${{ github.workspace }}/Deferno/docs/architecture.md
         run: pytest -v -m "not live"
 
