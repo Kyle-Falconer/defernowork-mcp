@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -33,7 +33,7 @@ jobs:
   docker:
     name: Build & push Docker image
     needs: test
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -80,7 +80,7 @@ jobs:
     name: Deploy to DigitalOcean
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
     needs: docker
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'DigitalOcean' || 'DigitalOcean-staging' }}
     steps:
       - name: Restart MCP service on droplet
@@ -99,7 +99,7 @@ jobs:
   pypi:
     name: Publish to PyPI
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     environment: pypi
     permissions:
       id-token: write
