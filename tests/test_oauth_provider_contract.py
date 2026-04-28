@@ -181,16 +181,7 @@ async def http_client(monkeypatch):
 
 
 def _oauth_smoke_params():
-    out = []
-    for f in discover_oauth_fixtures():
-        marks = []
-        if f.operation == "oauth.prm_metadata":
-            marks.append(pytest.mark.xfail(
-                reason="RFC 9728 PRM endpoint not yet wired up — see test_prm_required_keys",
-                strict=False,
-            ))
-        out.append(pytest.param(f, marks=marks, id=f.operation))
-    return out
+    return [pytest.param(f, id=f.operation) for f in discover_oauth_fixtures()]
 
 
 @pytest.mark.asyncio
@@ -242,9 +233,7 @@ async def test_endpoint_exists(fixture, http_client: httpx.AsyncClient):
 
 @pytest.mark.asyncio
 async def test_prm_required_keys(http_client: httpx.AsyncClient):
-    r = await http_client.get("/.well-known/oauth-protected-resource")
-    if r.status_code == 404:
-        pytest.skip("PRM endpoint not exposed in current build")
+    r = await http_client.get("/.well-known/oauth-protected-resource/mcp")
     assert r.status_code == 200
     body = r.json()
     assert "resource" in body

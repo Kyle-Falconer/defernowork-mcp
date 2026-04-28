@@ -1,7 +1,7 @@
 {
   "operation": "oauth.prm_metadata",
   "method": "GET",
-  "path_template": "/.well-known/oauth-protected-resource",
+  "path_template": "/.well-known/oauth-protected-resource/mcp",
   "auth": "none",
   "request": {},
   "responses": [
@@ -13,7 +13,8 @@
       },
       "example": {
         "resource": "https://app.defernowork.com/mcp",
-        "authorization_servers": ["https://app.defernowork.com/mcp"]
+        "authorization_servers": ["https://app.defernowork.com/mcp"],
+        "bearer_methods_supported": ["header"]
       }
     }
   ],
@@ -21,5 +22,5 @@
   "client_args_from_example": [],
   "mcp_tool": null,
   "mcp_tool_args_from_example": [],
-  "notes": "RFC 9728 — Protected Resource Metadata."
+  "notes": "RFC 9728 — Protected Resource Metadata. Path is suffixed with the resource's path component per RFC 9728 §3.1, so a resource at https://host/mcp publishes its PRM at /.well-known/oauth-protected-resource/mcp."
 }
