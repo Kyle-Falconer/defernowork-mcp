@@ -1,0 +1,20 @@
+services:
+  e2e-runner:
+    build:
+      context: ./runner
+      dockerfile: Dockerfile
+    environment:
+      ZITADEL_TEST_USER: ${ZITADEL_TEST_USER}
+      ZITADEL_TEST_PASSWORD: ${ZITADEL_TEST_PASSWORD}
+      ZITADEL_AUTH_URL: ${ZITADEL_AUTH_URL}
+      MCP_SERVER_UNDER_TEST: ${MCP_SERVER_UNDER_TEST}
+      # Required: Claude Code itself needs auth to call the model. Without
+      # this, `claude -p` exits 0 with "Invalid API key · Please run /login".
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_ENVIRONMENT: ${ANTHROPIC_ENVIRONMENT:-}
+      ANTHROPIC_API_KEY_NAME: ${ANTHROPIC_API_KEY_NAME:-}
+      BROWSER: /usr/local/bin/capture-url.sh
+    volumes:
+      - .:/work:ro
+      - ./artifacts:/artifacts
+    profiles: ["runner"]

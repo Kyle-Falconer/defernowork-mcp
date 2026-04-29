@@ -54,6 +54,7 @@ source = "vcs"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+norecursedirs = ["tests/e2e-bottle", ".git", ".venv"]
 markers = [
     "live: integration test that hits real network/staging services (skipped by default)",
 ]

@@ -8,6 +8,7 @@ user back to the original MCP client with an authorization code.
 from __future__ import annotations
 
 import logging
+import os
 from urllib.parse import urlencode
 
 from starlette.requests import Request
@@ -44,9 +45,13 @@ async def oidc_callback(request: Request) -> Response:
     except ValueError as exc:
         logger.warning("OIDC callback error: %s", exc)
         return Response(str(exc), status_code=400)
-    except Exception:
+    except Exception as exc:
         logger.exception("OIDC callback failed")
-        return Response("Internal error during authentication", status_code=500)
+        if os.getenv("MCP_DEBUG_OAUTH") == "1":
+            body = f"Internal error during authentication: {type(exc).__name__}"
+        else:
+            body = "Internal error during authentication"
+        return Response(body, status_code=500)
 
     # Redirect back to the MCP client with the authorization code
     params: dict[str, str] = {"code": mcp_code}

@@ -1,3 +1,5 @@
 
 
 *.pyc
+tests/e2e-bottle/.env.e2e
+tests/e2e-bottle/artifacts/
