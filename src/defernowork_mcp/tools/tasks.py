@@ -84,14 +84,14 @@ def register(
     async def create_task(
         title: str,
         description: str,
-        labels: list[str] | None = None,
-        parent_id: str | None = None,
-        assignee: str | None = None,
-        complete_by: str | None = None,
-        productive: float | None = None,
-        desire: float | None = None,
-        recurrence: dict[str, Any] | None = None,
-        recurring_type: str | None = None,
+        labels: list[str] | None = unset,
+        parent_id: str | None = unset,
+        assignee: str | None = unset,
+        complete_by: str | None = unset,
+        productive: float | None = unset,
+        desire: float | None = unset,
+        recurrence: dict[str, Any] | None = unset,
+        recurring_type: str | None = unset,
         ctx: Context = None,
     ) -> str:
         """Create a new task.
