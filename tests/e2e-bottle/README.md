@@ -1,5 +1,22 @@
 # MCP auth E2E bottle
 
+> # ⛔ STOP — DO NOT USE THIS DOCUMENT FOR CURRENT WORK
+>
+> ***This is a work-in-progress and currently non-operational.**
+>
+> 
+> **DO NOT:**
+> - Use or rely on code in this folder.
+> - Treat this as the source of truth for any current implementation
+> - Use this as a planning input for follow-up work in `defernowork-mcp`.
+>
+> **The current source of truth is** [`tests/e2e-bottle/WIP.md`](./WIP.md)
+> (especially the "Three-way operator decision" section). Read that
+> first; only return to this spec if the operator explicitly directs
+> you to **resurrect the E2E bottle feature**. Until then, treat
+> this file as historical.
+
+
 End-to-end regression coverage for the deployed Deferno MCP's
 OAuth-dance + tool-call surface, exercised against the live staging
 stack (`app2.defernowork.com/mcp`, `auth2.defernowork.com`).
