@@ -29,7 +29,7 @@ from tests.spec_runner import (
     wrap_envelope_error,
 )
 
-BASE = "http://test:3000"
+BASE = "http://test:3000/api"
 
 
 @pytest.fixture

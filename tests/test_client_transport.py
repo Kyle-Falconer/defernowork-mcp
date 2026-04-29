@@ -13,7 +13,7 @@ import respx
 
 from defernowork_mcp.client import DefernoClient, DefernoError
 
-BASE = "http://test:3000"
+BASE = "http://test:3000/api"
 
 
 @pytest.fixture

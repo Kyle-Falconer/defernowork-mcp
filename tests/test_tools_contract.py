@@ -23,7 +23,7 @@ from tests.spec_runner import (
     wrap_envelope_data,
 )
 
-BASE = "http://test:3000"
+BASE = "http://test:3000/api"
 
 
 def _tool_fixtures() -> list[Fixture]:

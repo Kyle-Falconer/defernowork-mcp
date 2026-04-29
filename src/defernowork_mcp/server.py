@@ -45,7 +45,7 @@ __all__ = ["create_server", "main", "main_http", "DefernoClient", "DEFAULT_BASE_
 
 logger = logging.getLogger("defernowork-mcp")
 
-DEFAULT_BASE_URL = "http://127.0.0.1:3000"
+DEFAULT_BASE_URL = "http://127.0.0.1:3000/api"
 
 _UNSET = object()
 """Sentinel for 'caller did not provide this argument'.

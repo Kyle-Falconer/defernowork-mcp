@@ -65,7 +65,7 @@ uv pip install deferno-mcp
 Run the one-time auth command:
 
 ```bash
-defernowork-mcp auth --base-url https://deferno.work
+defernowork-mcp auth --base-url https://app.defernowork.com/api
 ```
 
 This opens a browser-based login flow:
@@ -174,7 +174,7 @@ Environment variables:
 
 | Variable            | Default                 | Purpose                                        |
 | ------------------- | ----------------------- | ---------------------------------------------- |
-| `DEFERNO_BASE_URL`  | `http://127.0.0.1:3000` | URL of the Deferno backend HTTP API            |
+| `DEFERNO_BASE_URL`  | `http://127.0.0.1:3000/api` | URL of the Deferno backend HTTP API (must include `/api` prefix) |
 | `DEFERNO_TOKEN`     | _(unset)_               | Pre-existing bearer token; skips browser login |
 | `DEFERNO_LOG_LEVEL` | `WARNING`               | Python logging level                           |
 
@@ -192,7 +192,7 @@ Claude Desktop, or Claude Code's `mcpServers` config):
       "command": "uvx",
       "args": ["deferno-mcp"],
       "env": {
-        "DEFERNO_BASE_URL": "https://deferno.work"
+        "DEFERNO_BASE_URL": "https://app.defernowork.com/api"
       }
     }
   }
@@ -216,7 +216,7 @@ In `.vscode/mcp.json`:
   "servers": {
     "deferno": {
       "command": "deferno-mcp",
-      "env": { "DEFERNO_BASE_URL": "https://deferno.work" }
+      "env": { "DEFERNO_BASE_URL": "https://app.defernowork.com/api" }
     }
   }
 }

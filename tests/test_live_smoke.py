@@ -7,7 +7,7 @@ callers (instead of unwrapping to the inner ``data``) was the original
 "the MCP stopped working" symptom this whole branch was built to detect.
 
 Setup:
-  DEFERNO_BASE_URL  defaults to http://127.0.0.1:3000 (local dev backend)
+  DEFERNO_BASE_URL  defaults to http://127.0.0.1:3000/api (local dev backend)
   DEFERNO_TOKEN     required; obtain via `defernowork-mcp auth` for the
                     stdio path, or via the backend's /internal/mcp-session
                     for HTTP transport. The fixture self-skips if absent.
@@ -37,7 +37,7 @@ def _envelope_leak(value: object) -> bool:
 
 @pytest.fixture
 def base_url() -> str:
-    return os.environ.get("DEFERNO_BASE_URL", "http://127.0.0.1:3000")
+    return os.environ.get("DEFERNO_BASE_URL", "http://127.0.0.1:3000/api")
 
 
 @pytest.fixture

@@ -10,7 +10,7 @@ import respx
 
 from defernowork_mcp.client import DefernoClient, DefernoError
 
-BASE = "http://test:3000"
+BASE = "http://test:3000/api"
 ENVELOPE_SPEC = json.loads(
     (Path(__file__).parent / "spec" / "v0.1" / "_envelope.json").read_text(encoding="utf-8")
 )

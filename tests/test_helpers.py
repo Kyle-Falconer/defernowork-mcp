@@ -50,7 +50,7 @@ def test_create_server_returns_fastmcp():
 
 
 def test_default_base_url_is_localhost():
-    assert DEFAULT_BASE_URL == "http://127.0.0.1:3000"
+    assert DEFAULT_BASE_URL == "http://127.0.0.1:3000/api"
 
 
 # ── Token generation (from test_multi_user_auth.py) ─────────────────────────
