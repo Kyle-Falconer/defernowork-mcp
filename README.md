@@ -180,9 +180,15 @@ Environment variables:
 
 ## Client configuration snippets
 
-### Claude Desktop / Claude Code
+### Claude Desktop / Claude Code (Interactive method)
 
-Add to your MCP client settings (`claude_desktop_config.json` on
+Add Deferno's MCP server to Claude's MCP configuration using the command line:
+
+```bash
+claude mcp add --transport http deferno https://app.defernowork.com/mcp
+```
+
+Or add to your MCP client settings (`claude_desktop_config.json` on
 Claude Desktop, or Claude Code's `mcpServers` config):
 
 ```json
@@ -190,7 +196,7 @@ Claude Desktop, or Claude Code's `mcpServers` config):
   "mcpServers": {
     "deferno": {
       "command": "uvx",
-      "args": ["deferno-mcp"],
+      "args": ["defernowork-mcp"],
       "env": {
         "DEFERNO_BASE_URL": "https://app.defernowork.com/api"
       }
@@ -199,28 +205,32 @@ Claude Desktop, or Claude Code's `mcpServers` config):
 }
 ```
 
-The agent will walk you through browser-based auth on first use.
-If you prefer to skip the interactive flow, add `"DEFERNO_TOKEN": "..."`.
 
-### Cursor / Windsurf / Zed
+### Headless or mcporter (Token method)
 
-Same shape — these clients all consume the MCP `stdio` transport. Point
-them at the `deferno-mcp` command and set `DEFERNO_BASE_URL`.
-
-### VS Code Copilot agent mode
-
-In `.vscode/mcp.json`:
+If you prefer to skip the interactive flow, or you are running in a headless/SSH
+environment, provide a token directly. First, generate the MCP Personal access tokens through
+Deferno's Settings/Interactions page, then paste it into the config:
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "deferno": {
-      "command": "deferno-mcp",
-      "env": { "DEFERNO_BASE_URL": "https://app.defernowork.com/api" }
+      "command": "uvx",
+      "args": ["defernowork-mcp"],
+      "env": {
+        "DEFERNO_BASE_URL": "https://app.defernowork.com/api",
+        "DEFERNO_TOKEN": "..."
+      }
     }
   }
 }
 ```
+
+
+
+
+
 
 ## Running the backend
 
