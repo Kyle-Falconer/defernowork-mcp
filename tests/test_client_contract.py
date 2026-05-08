@@ -10,7 +10,9 @@ For each fixture with ``client_method`` set, runs:
 
 from __future__ import annotations
 
+import inspect
 import json
+import re
 from typing import Any
 
 import httpx
@@ -20,6 +22,7 @@ import respx
 from defernowork_mcp.client import DefernoClient, DefernoError
 from tests.spec_runner import (
     Fixture,
+    PLACEHOLDER_UUID,
     SUPPORTED_API_VERSION,
     assert_request_matches_spec,
     assert_response_matches_shape,
@@ -28,6 +31,8 @@ from tests.spec_runner import (
     wrap_envelope_data,
     wrap_envelope_error,
 )
+
+_PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
 
 BASE = "http://test:3000/api"
 
@@ -63,15 +68,16 @@ def _example_args(fixture: Fixture) -> dict[str, Any]:
 
 
 def _path_args(fixture: Fixture) -> tuple:
-    """Determine positional args for client methods that take id-from-path.
+    """Build positional args matching path placeholders, in declaration order.
 
-    Heuristic for current methods: first ``{id}`` or ``{task_id}`` placeholder
-    in the path becomes the first positional arg. Methods without placeholders
-    take none.
+    Each ``{name}`` placeholder gets ``PLACEHOLDER_UUID`` -- the same value
+    ``substitute_path`` substitutes -- so the resulting URL matches the route
+    set up via ``url__startswith=substitute_path(...)``.
+
+    Client methods are expected to accept these as positional args in the
+    order the placeholders appear in ``path_template``.
     """
-    if "{id}" in fixture.path_template or "{task_id}" in fixture.path_template:
-        return ("00000000-0000-0000-0000-000000000001",)
-    return ()
+    return tuple(PLACEHOLDER_UUID for _ in _PLACEHOLDER_RE.findall(fixture.path_template))
 
 
 def _invoke(client: DefernoClient, fixture: Fixture) -> Any:
@@ -81,11 +87,12 @@ def _invoke(client: DefernoClient, fixture: Fixture) -> Any:
     body = fixture.request.get("body") or {}
     example_body = body.get("example") or {}
 
-    # Methods that accept a single ``payload`` dict rather than kwargs:
-    payload_methods = {
-        "create_task", "update_task", "split_task", "fold_task",
-    }
-    if fixture.client_method in payload_methods:
+    # Auto-detect "single payload dict" pattern: client method whose only
+    # non-path parameter is named ``payload`` (e.g. ``create_task(payload)``,
+    # ``update_chore(chore_id, payload)``). Pass example_body positionally.
+    params = [p for p in inspect.signature(method).parameters if p != "self"]
+    body_params = params[len(args):]
+    if body_params == ["payload"]:
         return method(*args, example_body) if args else method(example_body)
     return method(*args, **kwargs)
 

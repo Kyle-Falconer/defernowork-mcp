@@ -39,7 +39,18 @@ from mcp.server.fastmcp import Context, FastMCP
 
 from .client import DefernoClient, DefernoError
 from .credentials import load_credentials
-from .tools import register_auth, register_tasks, register_daily_plan
+from .tools import (
+    register_auth,
+    register_chores,
+    register_comments,
+    register_daily_plan,
+    register_events,
+    register_feedback,
+    register_habits,
+    register_items,
+    register_saved_searches,
+    register_tasks,
+)
 
 __all__ = ["create_server", "main", "main_http", "DefernoClient", "DEFAULT_BASE_URL"]
 
@@ -269,8 +280,15 @@ def create_server(http_transport: bool = False) -> FastMCP:
     )
 
     # ── Register tool modules ─────────────────────────────────────
-    register_auth(mcp, _get_client_async, _get_anon_client, _format_error)
+    register_auth(mcp, _get_client_async, _get_anon_client, _format_error, _compact, _UNSET)
     register_tasks(mcp, _get_client_async, _format_error, _compact, _UNSET)
+    register_chores(mcp, _get_client_async, _format_error, _compact, _UNSET)
+    register_habits(mcp, _get_client_async, _format_error, _compact, _UNSET)
+    register_events(mcp, _get_client_async, _format_error, _compact, _UNSET)
+    register_comments(mcp, _get_client_async, _format_error, _compact, _UNSET)
+    register_saved_searches(mcp, _get_client_async, _format_error, _compact, _UNSET)
+    register_feedback(mcp, _get_client_async, _format_error, _compact, _UNSET)
+    register_items(mcp, _get_client_async, _format_error)
     register_daily_plan(mcp, _get_client_async, _format_error)
 
     # ── Resources ─────────────────────────────────────────────────

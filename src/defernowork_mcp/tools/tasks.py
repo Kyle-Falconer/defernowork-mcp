@@ -365,3 +365,68 @@ def register(
             except DefernoError as exc:
                 return format_error(exc)
         return json.dumps(result)
+
+    @mcp.tool()
+    async def delete_task(task_id: str, ctx: Context = None) -> str:
+        """Hard-delete a task by id (UUID). Returns no body."""
+        async with (await get_client(ctx=ctx)) as client:
+            try:
+                await client.delete_task(task_id)
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps({"deleted": True, "task_id": task_id})
+
+    @mcp.tool()
+    async def get_tasks_calendar(
+        start: str,
+        end: str,
+        tz: str | None = None,
+        ctx: Context = None,
+    ) -> str:
+        """Calendar view of tasks (recurring expansions + due dates).
+
+        ``start`` and ``end`` are YYYY-MM-DD strings; ``end`` is exclusive.
+        ``tz`` is an optional IANA timezone for local-midnight alignment.
+        """
+        async with (await get_client(ctx=ctx)) as client:
+            try:
+                events = await client.get_calendar_events(start, end, tz=tz)
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps(events)
+
+    @mcp.tool()
+    async def import_data(
+        data: dict[str, Any] | None = None,
+        ctx: Context = None,
+    ) -> str:
+        """Import an ExportData blob produced by ``export_data``.
+
+        ``data`` should be the full ExportData object (with keys ``tasks``,
+        ``events``, ``habits``, ``chores``, ``root_order``, ``daily_plans``).
+        Pass an empty dict to dry-run.
+        """
+        async with (await get_client(ctx=ctx)) as client:
+            try:
+                result = await client.import_data(data or {})
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps(result)
+
+    @mcp.tool()
+    async def batch_tasks(
+        operations: list[dict[str, Any]],
+        ctx: Context = None,
+    ) -> str:
+        """Apply a batch of task operations transactionally.
+
+        ``operations`` is a list of operation envelopes — see backend
+        ``/tasks/batch`` for the full schema. The whole batch succeeds
+        or fails as one unit.
+        """
+        async with (await get_client(ctx=ctx)) as client:
+            try:
+                result = await client.batch(operations)
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps(result)

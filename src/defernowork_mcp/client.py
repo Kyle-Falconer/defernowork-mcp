@@ -291,3 +291,208 @@ class DefernoClient:
     async def export_data(self) -> dict[str, Any]:
         """Export all user data."""
         return await self._request("GET", "/tasks/export")
+
+    # ----------------------------------------------------------------- chores
+    async def create_chore(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("POST", "/chores", json_body=payload)
+
+    async def update_chore(self, chore_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("PATCH", f"/chores/{chore_id}", json_body=payload)
+
+    async def delete_chore(self, chore_id: str) -> None:
+        await self._request("DELETE", f"/chores/{chore_id}")
+
+    async def list_chore_occurrences(
+        self,
+        chore_id: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if from_date is not None:
+            params.append(f"from={from_date}")
+        if to_date is not None:
+            params.append(f"to={to_date}")
+        query = "?" + "&".join(params) if params else ""
+        return await self._request("GET", f"/chores/{chore_id}/occurrences{query}")
+
+    async def set_chore_occurrence_status(
+        self, chore_id: str, date: str, status: str
+    ) -> dict[str, Any]:
+        return await self._request(
+            "PUT",
+            f"/chores/{chore_id}/occurrences/{date}",
+            json_body={"status": status},
+        )
+
+    async def mark_next_chore_done(
+        self, chore_id: str, status: str = "done"
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            f"/chores/{chore_id}/mark-next-done",
+            json_body={"status": status},
+        )
+
+    # ----------------------------------------------------------------- habits
+    async def create_habit(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("POST", "/habits", json_body=payload)
+
+    async def update_habit(self, habit_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("PATCH", f"/habits/{habit_id}", json_body=payload)
+
+    async def delete_habit(self, habit_id: str) -> None:
+        await self._request("DELETE", f"/habits/{habit_id}")
+
+    async def list_habit_occurrences(
+        self,
+        habit_id: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if from_date is not None:
+            params.append(f"from={from_date}")
+        if to_date is not None:
+            params.append(f"to={to_date}")
+        query = "?" + "&".join(params) if params else ""
+        return await self._request("GET", f"/habits/{habit_id}/occurrences{query}")
+
+    async def mark_habit_occurrence(
+        self, habit_id: str, done: bool, date: str | None = None
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"done": done}
+        if date is not None:
+            body["date"] = date
+        return await self._request(
+            "POST", f"/habits/{habit_id}/occurrences", json_body=body
+        )
+
+    async def clear_habit_occurrence(self, habit_id: str, date: str) -> None:
+        await self._request("DELETE", f"/habits/{habit_id}/occurrences/{date}")
+
+    # ----------------------------------------------------------------- events
+    async def create_event(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("POST", "/events", json_body=payload)
+
+    async def update_event(self, event_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("PATCH", f"/events/{event_id}", json_body=payload)
+
+    async def delete_event(self, event_id: str) -> None:
+        await self._request("DELETE", f"/events/{event_id}")
+
+    # --------------------------------------------------------------- comments
+    async def update_comment(self, comment_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("PATCH", f"/comments/{comment_id}", json_body=payload)
+
+    async def delete_comment(self, comment_id: str) -> None:
+        await self._request("DELETE", f"/comments/{comment_id}")
+
+    # --------------------------------------------------------- saved searches
+    async def list_saved_searches(self) -> list[dict[str, Any]]:
+        return await self._request("GET", "/saved-searches")
+
+    async def create_saved_search(
+        self, name: str, query_string: str
+    ) -> dict[str, Any]:
+        return await self._request(
+            "POST",
+            "/saved-searches",
+            json_body={"name": name, "query_string": query_string},
+        )
+
+    async def update_saved_search(
+        self,
+        saved_search_id: str,
+        name: str | None = None,
+        query_string: str | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if query_string is not None:
+            body["query_string"] = query_string
+        return await self._request(
+            "PATCH", f"/saved-searches/{saved_search_id}", json_body=body
+        )
+
+    async def delete_saved_search(self, saved_search_id: str) -> None:
+        await self._request("DELETE", f"/saved-searches/{saved_search_id}")
+
+    async def reorder_saved_searches(self, ids: list[str]) -> dict[str, Any]:
+        return await self._request(
+            "POST", "/saved-searches/reorder", json_body={"ids": ids}
+        )
+
+    # --------------------------------------------------------------- feedback
+    async def list_feedback(self) -> list[dict[str, Any]]:
+        return await self._request("GET", "/feedback")
+
+    async def feedback_stats(self) -> dict[str, Any]:
+        return await self._request("GET", "/feedback/stats")
+
+    async def update_feedback(
+        self, feedback_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        return await self._request(
+            "PATCH", f"/feedback/{feedback_id}", json_body=payload
+        )
+
+    # ------------------------------------------------------------------ auth/settings
+    async def get_settings(self) -> dict[str, Any]:
+        return await self._request("GET", "/auth/me/settings")
+
+    async def update_settings(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("PATCH", "/auth/me/settings", json_body=payload)
+
+    # ----------------------------------------------------------------- items
+    async def get_items_calendar(
+        self, start: str, end: str, tz: str | None = None
+    ) -> list[dict[str, Any]]:
+        params = [f"start={start}", f"end={end}"]
+        if tz is not None:
+            params.append(f"tz={quote(tz, safe='')}")
+        query = "?" + "&".join(params)
+        return await self._request("GET", f"/items/calendar{query}")
+
+    async def get_items_plan(
+        self, date: str | None = None, tz: str | None = None
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if date is not None:
+            params.append(f"date={date}")
+        if tz is not None:
+            params.append(f"tz={quote(tz, safe='')}")
+        query = "?" + "&".join(params) if params else ""
+        return await self._request("GET", f"/items/plan{query}")
+
+    async def add_to_items_plan(
+        self, task_id: str, date: str | None = None
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"task_id": task_id}
+        if date is not None:
+            body["date"] = date
+        return await self._request("POST", "/items/plan/add", json_body=body)
+
+    async def remove_from_items_plan(
+        self, task_id: str, date: str | None = None
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"task_id": task_id}
+        if date is not None:
+            body["date"] = date
+        return await self._request("POST", "/items/plan/remove", json_body=body)
+
+    async def reorder_items_plan(
+        self, task_ids: list[str], date: str | None = None
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {"task_ids": task_ids}
+        if date is not None:
+            body["date"] = date
+        return await self._request("POST", "/items/plan/reorder", json_body=body)
+
+    # ---------------------------------------------------------- tasks (extras)
+    async def delete_task(self, task_id: str) -> None:
+        await self._request("DELETE", f"/tasks/{task_id}")
+
+    async def import_data(self, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("POST", "/tasks/import", json_body=payload)

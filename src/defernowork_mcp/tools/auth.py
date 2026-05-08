@@ -1,4 +1,4 @@
-"""Authentication tools: start_auth, complete_auth, logout, whoami."""
+"""Authentication tools: start_auth, complete_auth, logout, whoami, settings."""
 
 from __future__ import annotations
 
@@ -17,6 +17,8 @@ def register(
     get_client: Callable[..., Awaitable[DefernoClient]],
     get_anon_client: Callable[[], DefernoClient],
     format_error: Callable[[DefernoError], str],
+    compact: Callable[[dict[str, Any]], dict[str, Any]],
+    unset: object,
 ) -> None:
     @mcp.tool()
     async def start_auth() -> str:
@@ -109,3 +111,31 @@ def register(
             except DefernoError as exc:
                 return format_error(exc)
         return json.dumps(result)
+
+    @mcp.tool()
+    async def get_settings(ctx: Context = None) -> str:
+        """Return the user's settings blob (theme, done-visibility, etc.)."""
+        async with (await get_client(ctx=ctx)) as client:
+            try:
+                settings = await client.get_settings()
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps(settings)
+
+    @mcp.tool()
+    async def update_settings(
+        done_visibility: str | None = unset,
+        theme: str | None = unset,
+        ctx: Context = None,
+    ) -> str:
+        """Patch user settings. Omitted fields stay unchanged."""
+        payload = compact({
+            "done_visibility": done_visibility,
+            "theme": theme,
+        })
+        async with (await get_client(ctx=ctx)) as client:
+            try:
+                settings = await client.update_settings(payload)
+            except DefernoError as exc:
+                return format_error(exc)
+        return json.dumps(settings)

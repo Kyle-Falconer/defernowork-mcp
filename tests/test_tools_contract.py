@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import re
 from typing import Any
 
 import pytest
@@ -17,11 +18,14 @@ from defernowork_mcp import server as srv
 from defernowork_mcp.client import DefernoClient
 from tests.spec_runner import (
     Fixture,
+    PLACEHOLDER_UUID,
     assert_response_matches_shape,
     discover_backend_fixtures,
     substitute_path,
     wrap_envelope_data,
 )
+
+_PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
 
 BASE = "http://test:3000/api"
 
@@ -106,11 +110,45 @@ def _tool_kwargs(fixture: Fixture, tool_fn) -> dict[str, Any]:
     return kwargs
 
 
+def _singularize(plural: str) -> str:
+    """Drop hyphens, drop English plural suffix.
+
+    Examples: ``tasks`` -> ``task``, ``saved-searches`` -> ``saved_search``,
+    ``feedback`` -> ``feedback`` (no change).
+    """
+    plural = plural.replace("-", "_")
+    if plural.endswith("ies"):
+        return plural[:-3] + "y"
+    for suffix in ("ches", "shes", "xes", "ses"):
+        if plural.endswith(suffix):
+            return plural[:-2]
+    if plural.endswith("s") and not plural.endswith("ss"):
+        return plural[:-1]
+    return plural
+
+
 def _tool_path_kwarg(fixture: Fixture) -> dict[str, Any]:
-    """Provide ``task_id`` for tools whose path contains an ``{id}`` placeholder."""
-    if "{id}" in fixture.path_template or "{task_id}" in fixture.path_template:
-        return {"task_id": "00000000-0000-0000-0000-000000000001"}
-    return {}
+    """Build kwargs for path placeholders.
+
+    Convention:
+    - ``{id}`` becomes ``<resource>_id`` derived from the segment immediately
+      preceding the placeholder (e.g. ``/chores/{id}`` -> ``chore_id``).
+    - Any other placeholder name is passed verbatim
+      (e.g. ``{task_id}`` -> ``task_id``, ``{date}`` -> ``date``).
+    """
+    segments = fixture.path_template.split("/")
+    kwargs: dict[str, Any] = {}
+    for i, seg in enumerate(segments):
+        m = re.match(r"^\{(\w+)\}$", seg)
+        if not m:
+            continue
+        name = m.group(1)
+        if name == "id" and i > 0:
+            resource = _singularize(segments[i - 1])
+            kwargs[f"{resource}_id"] = PLACEHOLDER_UUID
+        else:
+            kwargs[name] = PLACEHOLDER_UUID
+    return kwargs
 
 
 async def _invoke_tool(tool, kwargs: dict[str, Any]) -> Any:
