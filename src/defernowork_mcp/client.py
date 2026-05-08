@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from typing import Any
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 
@@ -247,13 +247,24 @@ class DefernoClient:
         return await self._request("POST", "/tasks/batch", json_body={"operations": operations})
 
     async def get_calendar_events(
-        self, start: str, end: str
+        self, start: str, end: str, tz: str | None = None
     ) -> list[dict[str, Any]]:
-        return await self._request("GET", f"/tasks/calendar?start={start}&end={end}")
+        params = [f"start={start}", f"end={end}"]
+        if tz is not None:
+            params.append(f"tz={quote(tz, safe='')}")
+        query = "?" + "&".join(params)
+        return await self._request("GET", f"/tasks/calendar{query}")
 
     # -------------------------------------------------------------- daily plan
-    async def get_daily_plan(self, date: str | None = None) -> list[dict[str, Any]]:
-        query = f"?date={date}" if date else ""
+    async def get_daily_plan(
+        self, date: str | None = None, tz: str | None = None
+    ) -> list[dict[str, Any]]:
+        params: list[str] = []
+        if date is not None:
+            params.append(f"date={date}")
+        if tz is not None:
+            params.append(f"tz={quote(tz, safe='')}")
+        query = "?" + "&".join(params) if params else ""
         return await self._request("GET", f"/tasks/plan{query}")
 
     async def add_to_plan(self, task_id: str, date: str | None = None) -> None:
