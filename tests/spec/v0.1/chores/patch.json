@@ -1,0 +1,34 @@
+{
+  "operation": "chores.patch",
+  "method": "PATCH",
+  "path_template": "/chores/{id}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": ["title", "description", "complete_by", "recurrence", "labels"],
+      "example": {"title": "Take out the recycling"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "id": "uuid",
+        "kind": "string",
+        "title": "string",
+        "_required": ["id", "kind", "title"]
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "kind": "Chore",
+        "title": "Take out the recycling"
+      }
+    }
+  ],
+  "client_method": "update_chore",
+  "client_args_from_example": [],
+  "mcp_tool": "update_chore",
+  "mcp_tool_args_from_example": ["title"]
+}

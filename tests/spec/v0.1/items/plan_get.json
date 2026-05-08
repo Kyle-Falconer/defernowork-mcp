@@ -1,0 +1,25 @@
+{
+  "operation": "items.plan_get",
+  "method": "GET",
+  "path_template": "/items/plan",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "query": {
+      "required": [],
+      "optional": ["date", "tz"],
+      "example": {"date": "2026-05-07"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": ["any"],
+      "example": []
+    }
+  ],
+  "client_method": "get_items_plan",
+  "client_args_from_example": ["date"],
+  "mcp_tool": "get_items_plan",
+  "mcp_tool_args_from_example": ["date"]
+}

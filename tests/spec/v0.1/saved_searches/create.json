@@ -1,0 +1,34 @@
+{
+  "operation": "saved_searches.create",
+  "method": "POST",
+  "path_template": "/saved-searches",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["name", "query_string"],
+      "optional": [],
+      "example": {"name": "Open chores", "query_string": "kind:chore status:open"}
+    }
+  },
+  "responses": [
+    {
+      "status": 201,
+      "shape": {
+        "id": "uuid",
+        "name": "string",
+        "query_string": "string",
+        "_required": ["id", "name", "query_string"]
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "name": "Open chores",
+        "query_string": "kind:chore status:open"
+      }
+    }
+  ],
+  "client_method": "create_saved_search",
+  "client_args_from_example": ["name", "query_string"],
+  "mcp_tool": "create_saved_search",
+  "mcp_tool_args_from_example": ["name", "query_string"]
+}

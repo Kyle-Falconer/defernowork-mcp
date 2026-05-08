@@ -1,0 +1,30 @@
+{
+  "operation": "habits.occurrences_list",
+  "method": "GET",
+  "path_template": "/habits/{id}/occurrences",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "query": {
+      "required": [],
+      "optional": ["from_date", "to_date"],
+      "example": {"from_date": "2026-05-01", "to_date": "2026-05-31"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {"date": "string", "done": "boolean", "_required": ["date", "done"]}
+      ],
+      "example": [
+        {"date": "2026-05-01", "done": true},
+        {"date": "2026-05-02", "done": false}
+      ]
+    }
+  ],
+  "client_method": "list_habit_occurrences",
+  "client_args_from_example": ["from_date", "to_date"],
+  "mcp_tool": "list_habit_occurrences",
+  "mcp_tool_args_from_example": ["from_date", "to_date"]
+}

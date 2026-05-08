@@ -1,0 +1,21 @@
+{
+  "operation": "tasks.batch",
+  "method": "POST",
+  "path_template": "/tasks/batch",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["operations"],
+      "optional": [],
+      "example": {"operations": []}
+    }
+  },
+  "responses": [
+    {"status": 200, "shape": "any", "example": {}}
+  ],
+  "client_method": "batch",
+  "client_args_from_example": ["operations"],
+  "mcp_tool": "batch_tasks",
+  "mcp_tool_args_from_example": ["operations"]
+}

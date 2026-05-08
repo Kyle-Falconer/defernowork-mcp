@@ -1,0 +1,33 @@
+{
+  "operation": "saved_searches.list",
+  "method": "GET",
+  "path_template": "/saved-searches",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {
+          "id": "uuid",
+          "name": "string",
+          "query_string": "string",
+          "_required": ["id", "name", "query_string"]
+        }
+      ],
+      "example": [
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "name": "Open chores",
+          "query_string": "kind:chore status:open"
+        }
+      ]
+    }
+  ],
+  "client_method": "list_saved_searches",
+  "client_args_from_example": [],
+  "mcp_tool": "list_saved_searches",
+  "mcp_tool_args_from_example": []
+}

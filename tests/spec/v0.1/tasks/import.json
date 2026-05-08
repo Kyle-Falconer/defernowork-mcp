@@ -1,0 +1,21 @@
+{
+  "operation": "tasks.import",
+  "method": "POST",
+  "path_template": "/tasks/import",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": ["tasks", "root_order", "plans"],
+      "example": {"tasks": [], "root_order": [], "plans": []}
+    }
+  },
+  "responses": [
+    {"status": 200, "shape": "any", "example": {}}
+  ],
+  "client_method": "import_data",
+  "client_args_from_example": [],
+  "mcp_tool": "import_data",
+  "mcp_tool_args_from_example": []
+}

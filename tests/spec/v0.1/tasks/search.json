@@ -1,0 +1,25 @@
+{
+  "operation": "tasks.search",
+  "method": "GET",
+  "path_template": "/tasks/search",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "query": {
+      "required": ["query"],
+      "optional": ["status", "label", "from_date", "to_date", "parent_id"],
+      "example": {"query": "groceries"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": ["any"],
+      "example": []
+    }
+  ],
+  "client_method": "search_tasks",
+  "client_args_from_example": ["query"],
+  "mcp_tool": "search_tasks",
+  "mcp_tool_args_from_example": ["query"]
+}

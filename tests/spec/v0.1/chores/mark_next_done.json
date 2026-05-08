@@ -1,0 +1,29 @@
+{
+  "operation": "chores.mark_next_done",
+  "method": "POST",
+  "path_template": "/chores/{id}/mark-next-done",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": ["status"],
+      "example": {"status": "done"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "date": "string",
+        "status": "string",
+        "_required": ["date", "status"]
+      },
+      "example": {"date": "2026-05-01", "status": "DoneOnTime"}
+    }
+  ],
+  "client_method": "mark_next_chore_done",
+  "client_args_from_example": ["status"],
+  "mcp_tool": "mark_next_chore_done",
+  "mcp_tool_args_from_example": ["status"]
+}

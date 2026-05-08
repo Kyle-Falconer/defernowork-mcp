@@ -1,0 +1,16 @@
+{
+  "operation": "habits.delete",
+  "method": "DELETE",
+  "path_template": "/habits/{id}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {"status": 204, "shape": "null", "example": null}
+  ],
+  "client_method": "delete_habit",
+  "client_args_from_example": [],
+  "mcp_tool": "delete_habit",
+  "mcp_tool_args_from_example": []
+}

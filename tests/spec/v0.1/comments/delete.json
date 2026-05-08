@@ -1,0 +1,16 @@
+{
+  "operation": "comments.delete",
+  "method": "DELETE",
+  "path_template": "/comments/{comment_id}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {"status": 204, "shape": "null", "example": null}
+  ],
+  "client_method": "delete_comment",
+  "client_args_from_example": [],
+  "mcp_tool": "delete_comment",
+  "mcp_tool_args_from_example": []
+}

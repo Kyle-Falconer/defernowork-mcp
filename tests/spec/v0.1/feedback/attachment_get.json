@@ -1,0 +1,17 @@
+{
+  "operation": "feedback.attachment_get",
+  "method": "GET",
+  "path_template": "/feedback/{feedback_id}/attachments/{attachment_id}",
+  "auth": "bearer-admin",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {"status": 200, "shape": "any", "example": {}}
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": [],
+  "notes": "binary download; not envelope-wrapped JSON, not implemented in MCP"
+}

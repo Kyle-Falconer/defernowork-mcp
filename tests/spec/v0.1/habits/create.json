@@ -1,0 +1,34 @@
+{
+  "operation": "habits.create",
+  "method": "POST",
+  "path_template": "/habits",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["title"],
+      "optional": ["description", "complete_by", "recurrence", "parent_id", "labels"],
+      "example": {"title": "Drink water"}
+    }
+  },
+  "responses": [
+    {
+      "status": 201,
+      "shape": {
+        "id": "uuid",
+        "kind": "string",
+        "title": "string",
+        "_required": ["id", "kind", "title"]
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "kind": "Habit",
+        "title": "Drink water"
+      }
+    }
+  ],
+  "client_method": "create_habit",
+  "client_args_from_example": ["title"],
+  "mcp_tool": "create_habit",
+  "mcp_tool_args_from_example": ["title"]
+}

@@ -1,0 +1,20 @@
+{
+  "operation": "tasks.export",
+  "method": "GET",
+  "path_template": "/tasks/export",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": "any",
+      "example": {"tasks": [], "root_order": [], "plans": []}
+    }
+  ],
+  "client_method": "export_data",
+  "client_args_from_example": [],
+  "mcp_tool": "export_data",
+  "mcp_tool_args_from_example": []
+}

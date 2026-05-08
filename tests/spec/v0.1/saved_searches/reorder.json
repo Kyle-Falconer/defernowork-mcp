@@ -1,0 +1,25 @@
+{
+  "operation": "saved_searches.reorder",
+  "method": "POST",
+  "path_template": "/saved-searches/reorder",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["ids"],
+      "optional": [],
+      "example": {"ids": ["00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"]}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": "any",
+      "example": {}
+    }
+  ],
+  "client_method": "reorder_saved_searches",
+  "client_args_from_example": ["ids"],
+  "mcp_tool": "reorder_saved_searches",
+  "mcp_tool_args_from_example": ["ids"]
+}

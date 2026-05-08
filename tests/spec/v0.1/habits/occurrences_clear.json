@@ -1,0 +1,16 @@
+{
+  "operation": "habits.occurrences_clear",
+  "method": "DELETE",
+  "path_template": "/habits/{id}/occurrences/{date}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {"status": 204, "shape": "null", "example": null}
+  ],
+  "client_method": "clear_habit_occurrence",
+  "client_args_from_example": [],
+  "mcp_tool": "clear_habit_occurrence",
+  "mcp_tool_args_from_example": []
+}

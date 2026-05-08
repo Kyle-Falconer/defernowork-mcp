@@ -1,0 +1,17 @@
+{
+  "operation": "tasks.delete_all",
+  "method": "DELETE",
+  "path_template": "/tasks/all",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {"status": 204, "shape": "null", "example": null}
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": [],
+  "notes": "cookie-authed only; bearer token rejected by backend handler"
+}

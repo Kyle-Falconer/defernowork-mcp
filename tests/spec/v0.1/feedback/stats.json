@@ -1,0 +1,20 @@
+{
+  "operation": "feedback.stats",
+  "method": "GET",
+  "path_template": "/feedback/stats",
+  "auth": "bearer-admin",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": "any",
+      "example": {"total": 0, "by_status": {}}
+    }
+  ],
+  "client_method": "feedback_stats",
+  "client_args_from_example": [],
+  "mcp_tool": "feedback_stats",
+  "mcp_tool_args_from_example": []
+}

@@ -1,0 +1,15 @@
+{
+  "operation": "auth.oidc_register",
+  "method": "GET",
+  "path_template": "/auth/oidc/register",
+  "auth": "none",
+  "request": {},
+  "responses": [
+    {"status": 302, "shape": "any", "example": {}}
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": [],
+  "notes": "302 redirect; OAuth flow handled by start_auth tool, not exposed as a direct client method"
+}

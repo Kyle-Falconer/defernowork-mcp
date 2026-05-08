@@ -1,0 +1,34 @@
+{
+  "operation": "saved_searches.patch",
+  "method": "PATCH",
+  "path_template": "/saved-searches/{id}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": ["name", "query_string"],
+      "example": {"name": "Renamed search"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "id": "uuid",
+        "name": "string",
+        "query_string": "string",
+        "_required": ["id", "name", "query_string"]
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "name": "Renamed search",
+        "query_string": "kind:chore status:open"
+      }
+    }
+  ],
+  "client_method": "update_saved_search",
+  "client_args_from_example": ["name"],
+  "mcp_tool": "update_saved_search",
+  "mcp_tool_args_from_example": ["name"]
+}

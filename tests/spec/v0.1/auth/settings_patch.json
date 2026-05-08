@@ -1,0 +1,25 @@
+{
+  "operation": "auth.settings_patch",
+  "method": "PATCH",
+  "path_template": "/auth/me/settings",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": ["done_visibility", "theme"],
+      "example": {"theme": "dark"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": "any",
+      "example": {"done_visibility": "show", "theme": "dark"}
+    }
+  ],
+  "client_method": "update_settings",
+  "client_args_from_example": [],
+  "mcp_tool": "update_settings",
+  "mcp_tool_args_from_example": ["theme"]
+}

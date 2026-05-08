@@ -1,0 +1,16 @@
+{
+  "operation": "events.delete",
+  "method": "DELETE",
+  "path_template": "/events/{id}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"]
+  },
+  "responses": [
+    {"status": 204, "shape": "null", "example": null}
+  ],
+  "client_method": "delete_event",
+  "client_args_from_example": [],
+  "mcp_tool": "delete_event",
+  "mcp_tool_args_from_example": []
+}

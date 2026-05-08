@@ -1,0 +1,29 @@
+{
+  "operation": "habits.occurrences_mark",
+  "method": "POST",
+  "path_template": "/habits/{id}/occurrences",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["done"],
+      "optional": ["date"],
+      "example": {"done": true, "date": "2026-05-07"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "date": "string",
+        "done": "boolean",
+        "_required": ["date", "done"]
+      },
+      "example": {"date": "2026-05-07", "done": true}
+    }
+  ],
+  "client_method": "mark_habit_occurrence",
+  "client_args_from_example": ["done", "date"],
+  "mcp_tool": "mark_habit_occurrence",
+  "mcp_tool_args_from_example": ["done", "date"]
+}

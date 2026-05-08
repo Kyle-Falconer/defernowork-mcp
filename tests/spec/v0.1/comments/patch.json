@@ -1,0 +1,25 @@
+{
+  "operation": "comments.patch",
+  "method": "PATCH",
+  "path_template": "/comments/{comment_id}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": ["body", "is_private"],
+      "example": {"body": "edited comment text"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {"id": "uuid", "_required": ["id"]},
+      "example": {"id": "00000000-0000-0000-0000-000000000001"}
+    }
+  ],
+  "client_method": "update_comment",
+  "client_args_from_example": [],
+  "mcp_tool": "update_comment",
+  "mcp_tool_args_from_example": ["body"]
+}

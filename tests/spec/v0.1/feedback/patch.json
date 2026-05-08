@@ -1,0 +1,25 @@
+{
+  "operation": "feedback.patch",
+  "method": "PATCH",
+  "path_template": "/feedback/{id}",
+  "auth": "bearer-admin",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["status"],
+      "optional": ["admin_notes"],
+      "example": {"status": "resolved"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {"id": "uuid", "_required": ["id"]},
+      "example": {"id": "00000000-0000-0000-0000-000000000001"}
+    }
+  ],
+  "client_method": "update_feedback",
+  "client_args_from_example": ["status"],
+  "mcp_tool": "update_feedback",
+  "mcp_tool_args_from_example": ["status"]
+}

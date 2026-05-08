@@ -1,0 +1,22 @@
+{
+  "operation": "feedback.create",
+  "method": "POST",
+  "path_template": "/feedback",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["category", "subject", "body"],
+      "optional": [],
+      "example": {"category": "", "subject": "", "body": ""}
+    }
+  },
+  "responses": [
+    {"status": 201, "shape": "any", "example": {}}
+  ],
+  "client_method": null,
+  "client_args_from_example": [],
+  "mcp_tool": null,
+  "mcp_tool_args_from_example": [],
+  "notes": "multipart/form-data upload (5 attachments <=10MB each); not implemented in MCP -- backend-direct only"
+}

@@ -1,0 +1,34 @@
+{
+  "operation": "events.create",
+  "method": "POST",
+  "path_template": "/events",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["title", "complete_by"],
+      "optional": ["end_time", "description", "labels", "parent_id", "recurrence"],
+      "example": {"title": "Dentist appointment", "complete_by": "2026-05-08T14:00:00Z"}
+    }
+  },
+  "responses": [
+    {
+      "status": 201,
+      "shape": {
+        "id": "uuid",
+        "kind": "string",
+        "title": "string",
+        "_required": ["id", "kind", "title"]
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "kind": "Event",
+        "title": "Dentist appointment"
+      }
+    }
+  ],
+  "client_method": "create_event",
+  "client_args_from_example": ["title", "complete_by"],
+  "mcp_tool": "create_event",
+  "mcp_tool_args_from_example": ["title", "complete_by"]
+}

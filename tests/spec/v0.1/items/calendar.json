@@ -1,0 +1,25 @@
+{
+  "operation": "items.calendar",
+  "method": "GET",
+  "path_template": "/items/calendar",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "query": {
+      "required": ["start", "end"],
+      "optional": ["tz"],
+      "example": {"start": "2026-05-01", "end": "2026-05-31"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": ["any"],
+      "example": []
+    }
+  ],
+  "client_method": "get_items_calendar",
+  "client_args_from_example": ["start", "end"],
+  "mcp_tool": "get_items_calendar",
+  "mcp_tool_args_from_example": ["start", "end"]
+}

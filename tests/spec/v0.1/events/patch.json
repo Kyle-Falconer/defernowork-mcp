@@ -1,0 +1,34 @@
+{
+  "operation": "events.patch",
+  "method": "PATCH",
+  "path_template": "/events/{id}",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": [],
+      "optional": ["title", "complete_by", "end_time", "description", "labels", "recurrence"],
+      "example": {"title": "Rescheduled dentist appointment"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": {
+        "id": "uuid",
+        "kind": "string",
+        "title": "string",
+        "_required": ["id", "kind", "title"]
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "kind": "Event",
+        "title": "Rescheduled dentist appointment"
+      }
+    }
+  ],
+  "client_method": "update_event",
+  "client_args_from_example": [],
+  "mcp_tool": "update_event",
+  "mcp_tool_args_from_example": ["title"]
+}

@@ -1,0 +1,34 @@
+{
+  "operation": "chores.create",
+  "method": "POST",
+  "path_template": "/chores",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "body": {
+      "required": ["title"],
+      "optional": ["description", "complete_by", "recurrence", "parent_id", "labels"],
+      "example": {"title": "Take out the trash"}
+    }
+  },
+  "responses": [
+    {
+      "status": 201,
+      "shape": {
+        "id": "uuid",
+        "kind": "string",
+        "title": "string",
+        "_required": ["id", "kind", "title"]
+      },
+      "example": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "kind": "Chore",
+        "title": "Take out the trash"
+      }
+    }
+  ],
+  "client_method": "create_chore",
+  "client_args_from_example": ["title"],
+  "mcp_tool": "create_chore",
+  "mcp_tool_args_from_example": ["title"]
+}

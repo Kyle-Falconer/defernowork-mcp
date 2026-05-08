@@ -1,0 +1,30 @@
+{
+  "operation": "chores.occurrences_list",
+  "method": "GET",
+  "path_template": "/chores/{id}/occurrences",
+  "auth": "bearer",
+  "request": {
+    "headers_required": ["Authorization"],
+    "query": {
+      "required": [],
+      "optional": ["from_date", "to_date"],
+      "example": {"from_date": "2026-05-01", "to_date": "2026-05-31"}
+    }
+  },
+  "responses": [
+    {
+      "status": 200,
+      "shape": [
+        {"date": "string", "status": "string", "_required": ["date", "status"]}
+      ],
+      "example": [
+        {"date": "2026-05-01", "status": "DoneOnTime"},
+        {"date": "2026-05-02", "status": "Scheduled"}
+      ]
+    }
+  ],
+  "client_method": "list_chore_occurrences",
+  "client_args_from_example": ["from_date", "to_date"],
+  "mcp_tool": "list_chore_occurrences",
+  "mcp_tool_args_from_example": ["from_date", "to_date"]
+}
