@@ -9,6 +9,10 @@ item and returning a Compact projection.
 We also assert the bounded-surface reshape itself: the unbounded
 ``defernowork://tasks`` resource and the UUID-only ``defernowork://task/{id}``
 template are gone, while ``plan`` + ``mood-history`` are retained.
+
+The App URL and Alias forms, the routing that keeps a Sequence shorthand on the
+personal org, and the errors for malformed and empty refs are pinned separately
+in ``test_item_resource_ref_forms.py``.
 """
 
 from __future__ import annotations
