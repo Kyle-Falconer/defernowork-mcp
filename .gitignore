@@ -6,3 +6,4 @@ __pycache__/
 measure/
 tests/e2e-bottle/.env.e2e
 tests/e2e-bottle/artifacts/
+.DS_Store

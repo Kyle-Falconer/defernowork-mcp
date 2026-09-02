@@ -8,7 +8,7 @@ works. The task-scoped plan tools (``add_to_plan`` / ``remove_from_plan`` /
 (``/items/plan/*`` is the same backend handler), so these tests pin ref
 resolution on the surviving surface.
 
-Exercised through the public interface: a real FastMCP server (client pointed
+Exercised through the public interface: a real MCPServer server (client pointed
 at a respx-mocked backend), the tool looked up from the registry and invoked.
 """
 

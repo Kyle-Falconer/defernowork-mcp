@@ -1,6 +1,6 @@
 """In-process RFC contract for the MCP OAuth provider.
 
-Mounts the FastMCP server's ASGI app via the same ``streamable_http_app()``
+Mounts the MCPServer server's ASGI app via the same ``streamable_http_app()``
 call ``server.py`` uses for production HTTP transport, then drives it with
 ``httpx.ASGITransport``. No network, no Redis (``RedisStore.__init__`` is
 patched to wrap an in-memory fake — same fake used in test_redis_store.py).
@@ -81,7 +81,7 @@ class _FakePipeline:
 
 @pytest.fixture
 async def http_client(monkeypatch):
-    """Construct an in-process FastMCP HTTP app with stub OIDC + fake Redis.
+    """Construct an in-process MCPServer HTTP app with stub OIDC + fake Redis.
 
     ``create_server(http_transport=True)`` instantiates ``RedisStore(redis_url)``
     eagerly when ``ZITADEL_ISSUER_URL`` is set. We patch ``RedisStore.__init__``

@@ -31,6 +31,8 @@ import pytest
 import respx
 
 from defernowork_mcp import server as srv
+from mcp.server.mcpserver import Context
+
 from defernowork_mcp.client import DefernoClient, DefernoError
 
 BASE = "http://test:3000/api"
@@ -101,7 +103,8 @@ async def _read(mcp, uri: str):
     matcher decides whether the URI reaches the handler at all. That matcher is
     the machinery SDK 2.x replaces.
     """
-    resource = await mcp._resource_manager.get_resource(uri)
+    context = Context(mcp_server=mcp, subscriptions=mcp._subscriptions)
+    resource = await mcp._resource_manager.get_resource(uri, context)
     body = await resource.read()
     return json.loads(body)
 
@@ -130,6 +133,33 @@ def _routes():
     return by_seq, by_ref, by_alias, by_id_shared
 
 
+
+# ── what SDK 2.x changed here ───────────────────────────────────────────────
+#
+# This file pins the 1.x template matcher. The port to 2.x moved it, so the
+# assertions below now describe behavior the server no longer has. Issue #35
+# decides what the new behavior should be and makes these pass.
+#
+# Each marker names one change. A marker that starts passing means #35 landed
+# and the marker comes off.
+
+RFC_6570_DECODES = pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "2.x matches per RFC 6570 and percent-decodes the captured variable. "
+        "1.x captured the raw text with [^/]+. See #35."
+    ),
+)
+
+TYPED_RESOURCE_ERRORS = pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "2.x raises ResourceNotFoundError / UnexpectedResourceError where 1.x "
+        "raised a doubly-wrapped ValueError. See #35."
+    ),
+)
+
+
 # ── what the 1.x template matcher accepts ────────────────────────────────────
 #
 # 1.x builds the pattern by string replacement: ``{ref}`` becomes
@@ -141,12 +171,28 @@ def _routes():
     ("label", "ref"),
     [
         ("uuid", PERSONAL_UUID),
-        ("sequence shorthand, encoded", quote("#123", safe="")),
+        pytest.param(
+            "sequence shorthand, encoded",
+            quote("#123", safe=""),
+            marks=RFC_6570_DECODES,
+        ),
         ("sequence shorthand, bare digits", "123"),
         ("canonical ref", f"{PERSONAL_SLUG}-123"),
-        ("app url, encoded", quote(APP_URL_SEQ, safe="")),
-        ("app url with uuid tail, encoded", quote(APP_URL_UUID, safe="")),
-        ("alias, encoded", quote(ALIAS, safe="")),
+        pytest.param(
+            "app url, encoded",
+            quote(APP_URL_SEQ, safe=""),
+            marks=RFC_6570_DECODES,
+        ),
+        pytest.param(
+            "app url with uuid tail, encoded",
+            quote(APP_URL_UUID, safe=""),
+            marks=RFC_6570_DECODES,
+        ),
+        pytest.param(
+            "alias, encoded",
+            quote(ALIAS, safe=""),
+            marks=RFC_6570_DECODES,
+        ),
     ],
 )
 def test_template_matches_every_ref_form_once_encoded(server, label, ref):
@@ -171,6 +217,7 @@ def test_template_rejects_raw_forms_that_carry_path_separators(server, label, re
     assert _template(server).matches(f"defernowork://item/{ref}") is None
 
 
+@RFC_6570_DECODES
 def test_template_rejects_an_empty_ref(server):
     """``[^/]+`` requires at least one character, so an empty ref never matches.
 
@@ -180,6 +227,7 @@ def test_template_rejects_an_empty_ref(server):
     assert _template(server).matches("defernowork://item/") is None
 
 
+@RFC_6570_DECODES
 def test_template_matches_a_bare_hash_and_a_lone_space(server):
     """1.x matches on the raw string, so it accepts characters a URI should not carry.
 
@@ -237,6 +285,7 @@ async def test_app_url_with_uuid_tail_short_circuits_to_the_id_route(server):
 
 
 @respx.mock
+@TYPED_RESOURCE_ERRORS
 async def test_raw_app_url_never_reaches_the_handler(server):
     """A raw App URL fails template matching, so no request is ever issued.
 
@@ -279,6 +328,7 @@ async def test_alias_resolves_through_the_by_alias_route(server):
 
 
 @respx.mock
+@TYPED_RESOURCE_ERRORS
 async def test_raw_alias_never_reaches_the_handler(server):
     """A raw Alias fails template matching on the ``/`` in ``owner/repo``."""
     _routes()
@@ -361,6 +411,7 @@ async def test_naming_a_shared_org_item_takes_a_canonical_ref(server):
         ("literal space", " ", "' '"),
     ],
 )
+@TYPED_RESOURCE_ERRORS
 @respx.mock
 async def test_malformed_ref_raises_a_defined_error(
     server, label, ref, expected_in_message
@@ -385,6 +436,7 @@ async def test_malformed_ref_raises_a_defined_error(
 
 
 @respx.mock
+@TYPED_RESOURCE_ERRORS
 async def test_empty_ref_is_an_unknown_resource(server):
     """``defernowork://item/`` fails matching rather than reaching the handler.
 

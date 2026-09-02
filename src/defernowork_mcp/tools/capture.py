@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Annotated, Any, Awaitable, Callable, Literal
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from pydantic import Field
 
 from ..capture import CaptureError, derive_create_payload
@@ -14,7 +14,7 @@ from ..constraints import RECURRENCE_END_DESC
 
 
 def register(
-    mcp: FastMCP,
+    mcp: MCPServer,
     get_client: Callable[..., Awaitable[DefernoClient]],
     format_error: Callable[[DefernoError], str],
 ) -> None:

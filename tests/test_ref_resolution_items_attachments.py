@@ -11,7 +11,7 @@ The Task-only attachment tools (``*_task_attachments``) were retired — the
 kind-neutral item-activity tools (``*_item_attachment*``) cover Task/Chore/Habit
 (see tests/test_item_attachments.py); this file only guards that they are gone.
 
-Tools are exercised through the public interface: a real FastMCP server built by
+Tools are exercised through the public interface: a real MCPServer server built by
 ``create_server`` (client pointed at a respx-mocked backend), the tool looked up from
 the registry and invoked.
 """

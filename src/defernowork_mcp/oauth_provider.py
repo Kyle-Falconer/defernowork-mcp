@@ -64,7 +64,7 @@ class DefernoOAuthProvider:
         return OAuthClientInformationFull(**data)
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
-        # FastMCP's RegistrationHandler already generates client_id and
+        # MCPServer's RegistrationHandler already generates client_id and
         # client_secret (when appropriate for the auth method).  Just persist
         # what was passed in — do not generate new values here.
         await self.store.save_client(
