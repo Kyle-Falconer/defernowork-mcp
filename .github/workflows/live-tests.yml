@@ -11,11 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v5
+
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
-      - run: pip install ".[test]"
+          enable-cache: true
+
+      - name: Install the locked dependencies
+        # Same locked versions the Release workflow and a local `uv sync` use.
+        # --locked fails when pyproject.toml and uv.lock disagree.
+        run: uv sync --locked --extra test
+
       - name: Run live-marked tests against staging
         env:
           DEFERNO_STAGING_URL: ${{ secrets.DEFERNO_STAGING_URL }}
-        run: pytest -v -m live
+        run: uv run --no-sync pytest -v -m live
