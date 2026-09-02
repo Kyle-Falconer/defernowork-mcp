@@ -163,10 +163,52 @@ def run_inventory(arch_path: Path) -> None:
     cross_check(doc, list(ENDPOINTS), fixtures)
 
 
-def architecture_doc_path() -> Path | None:
-    """Resolve the architecture doc location from env or sibling layout."""
-    env = os.environ.get("ARCHITECTURE_DOC_PATH")
+ARCHITECTURE_DOC_ENV = "ARCHITECTURE_DOC_PATH"
+
+SIBLING_ARCHITECTURE_DOC = (
+    Path(__file__).resolve().parent.parent.parent / "Deferno" / "docs" / "architecture.md"
+)
+"""Where the document sits when the Deferno repo is checked out beside this one."""
+
+
+@dataclass(frozen=True)
+class ArchitectureDoc:
+    """Where the architecture document is, and whether its absence is an error."""
+
+    path: Path
+    required: bool
+
+    def exists(self) -> bool:
+        return self.path.exists()
+
+
+def architecture_doc() -> ArchitectureDoc:
+    """Locate the architecture document and say whether it has to be there.
+
+    ``ARCHITECTURE_DOC_PATH`` names the document. Setting it declares that the
+    document is expected, so a missing file is a failure rather than a skip. CI
+    sets it.
+
+    With the variable unset, the lookup falls back to a sibling Deferno
+    checkout. A contributor may not have that repo, so a missing file there is
+    not an error.
+    """
+    env = os.environ.get(ARCHITECTURE_DOC_ENV)
     if env:
-        return Path(env)
-    sibling = Path(__file__).resolve().parent.parent.parent / "Deferno" / "docs" / "architecture.md"
-    return sibling if sibling.exists() else None
+        return ArchitectureDoc(path=Path(env), required=True)
+    return ArchitectureDoc(path=SIBLING_ARCHITECTURE_DOC, required=False)
+
+
+def missing_doc_message(doc: ArchitectureDoc) -> str:
+    """Explain which document is missing and how to supply it."""
+    if doc.required:
+        return (
+            f"architecture.md is not at {doc.path}, and {ARCHITECTURE_DOC_ENV} says "
+            f"it should be. In CI the file comes from the Deferno sibling checkout, "
+            f"which needs the DEFERNO_REPO_TOKEN repository secret. Locally, clear "
+            f"{ARCHITECTURE_DOC_ENV} to skip this gate instead."
+        )
+    return (
+        f"architecture.md is not at {doc.path}. Check out the Deferno repo beside "
+        f"this one, or point {ARCHITECTURE_DOC_ENV} at the document."
+    )
