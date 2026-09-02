@@ -22,11 +22,16 @@ jobs:
           fetch-depth: 1
           token: ${{ secrets.DEFERNO_REPO_TOKEN }}
 
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.12"
+          enable-cache: true
 
-      - run: pip install ".[test]"
+      - name: Install the locked dependencies
+        # --locked installs the versions in uv.lock, the same versions a local
+        # `uv sync` installs. It fails when pyproject.toml and uv.lock disagree,
+        # so a dependency change that skipped `uv lock` breaks the build here.
+        run: uv sync --locked --extra test
 
       - name: Run default suite (excludes 'live' marker)
         env:
@@ -35,7 +40,193 @@ jobs:
           # gate test self-skips with a clear reason. Setting the secret
           # turns on drift enforcement in CI without any further changes.
           ARCHITECTURE_DOC_PATH: ${{ github.workspace }}/Deferno/docs/architecture.md
-        run: pytest -v -m "not live"
+        # --no-sync runs in the environment the step above built.
+        run: uv run --no-sync pytest -v -m "not live"
+
+  unpinned-drift:
+    name: Unpinned dependency drift
+    # Report only. This job resolves dependencies without uv.lock and without
+    # the upper bounds in pyproject.toml, so a new upstream major shows up here
+    # on the day it ships. continue-on-error keeps a failure off the build's
+    # result, and no job declares `needs` on it.
+    continue-on-error: true
+    # The resolve reaches the network for every dependency. Bound it rather
+    # than let a hung resolve hold a runner for the six-hour default.
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Write out the locked versions
+        run: >
+          uv export --locked --extra test --no-header --no-hashes
+          --no-annotate --no-emit-project
+          --output-file locked-requirements.txt
+
+      - name: Find the requirements that hold a version back
+        # One scan of pyproject.toml writes both files, so they cannot drift
+        # apart. capped-requirements.txt holds the requirement strings, and the
+        # report step prints them. overrides.txt names the same packages with
+        # no version specifier, and the resolve below reads it.
+        run: |
+          uv run --no-project --python 3.12 --with packaging - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          from packaging.requirements import Requirement
+          from packaging.utils import canonicalize_name
+
+          # An upper bound or an exclusion keeps a release out of the resolve.
+          # A lower bound alone does not. Reading the specifier off a parsed
+          # requirement also keeps an environment marker such as
+          # `python_version < "3.11"` from counting as a bound.
+          HOLDS_BACK = {"<", "<=", "==", "~=", "!="}
+
+          project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+          requirements = list(project.get("dependencies", []))
+          for extra in project.get("optional-dependencies", {}).values():
+              requirements.extend(extra)
+
+          capped = []
+          for text in sorted(set(requirements)):
+              requirement = Requirement(text)
+              if any(spec.operator in HOLDS_BACK for spec in requirement.specifier):
+                  capped.append((text, requirement))
+
+          Path("capped-requirements.txt").write_text(
+              "".join(f"{text}\n" for text, _ in capped)
+          )
+
+          # An override replaces the requirement it matches, so extras and
+          # markers have to survive it. The version specifier is the one part
+          # being dropped.
+          overrides = {}
+          for _, requirement in capped:
+              key = (canonicalize_name(requirement.name), str(requirement.marker or ""))
+              overrides.setdefault(key, set()).update(requirement.extras)
+
+          lines = []
+          for (name, marker), extras in sorted(overrides.items()):
+              extra_text = f"[{','.join(sorted(extras))}]" if extras else ""
+              marker_text = f"; {marker}" if marker else ""
+              lines.append(f"{name}{extra_text}{marker_text}\n")
+          Path("overrides.txt").write_text("".join(lines))
+
+          print("".join(lines) or "Nothing in pyproject.toml holds a version back.")
+          PY
+
+      - name: Resolve dependencies without the lockfile or the bounds
+        # `uv pip install` reads pyproject.toml and ignores uv.lock. The
+        # highest resolution strategy takes the newest version each constraint
+        # allows. --override replaces the capped requirements with unbounded
+        # ones, so a major release that pyproject.toml rules out installs here.
+        run: |
+          uv venv
+          uv pip install --resolution highest --override overrides.txt ".[test]"
+
+      - name: Print the versions this resolve picked
+        run: uv pip freeze | tee unpinned-requirements.txt
+
+      - name: Run default suite (excludes 'live' marker)
+        run: .venv/bin/python -m pytest -v -m "not live"
+
+      - name: Report the drift
+        # always() so the report still lands when the suite fails above. A
+        # failing suite is the interesting case: it names the release that
+        # broke us.
+        if: always()
+        run: |
+          uv run --no-project --python 3.12 - <<'PY'
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+
+          def canonical(name):
+              return re.sub(r"[-_.]+", "-", name).lower()
+
+
+          def read_pins(path):
+              """Map canonical package name to version, for one requirements file."""
+              pins = {}
+              if not Path(path).exists():
+                  return pins
+              for line in Path(path).read_text().splitlines():
+                  line = line.split("#", 1)[0].split(";", 1)[0].strip()
+                  if "==" not in line:
+                      continue
+                  name, _, version = line.partition("==")
+                  pins[canonical(name)] = version.strip()
+              return pins
+
+
+          def read_lines(path):
+              """Return the non-blank lines of a file, or an empty list."""
+              if not Path(path).exists():
+                  return []
+              lines = Path(path).read_text().splitlines()
+              return [line.strip() for line in lines if line.strip()]
+
+
+          locked = read_pins("locked-requirements.txt")
+          unpinned = read_pins("unpinned-requirements.txt")
+          unbounded = read_lines("capped-requirements.txt")
+
+          moved = sorted(
+              (name, locked[name], unpinned[name])
+              for name in locked.keys() & unpinned.keys()
+              if locked[name] != unpinned[name]
+          )
+          extra_packages = sorted(unpinned.keys() - locked.keys())
+
+          out = ["## Unpinned dependency drift\n\n"]
+          if not locked or not unpinned:
+              out.append(
+                  "The resolve did not finish, so there is nothing to compare. "
+                  "Read the step log above.\n"
+              )
+          else:
+              out.append(
+                  "This job resolved every dependency to its highest available "
+                  "version. It ignored `uv.lock`, and it dropped the version "
+                  "bounds in `pyproject.toml`. The test job installs the locked "
+                  "versions instead.\n\n"
+              )
+              if unbounded:
+                  out.append(
+                      "These requirements resolved without their version bounds, "
+                      "so a release `pyproject.toml` rules out reaches this job:\n\n"
+                  )
+                  out.extend(f"- `{r}`\n" for r in unbounded)
+                  out.append("\n")
+              if moved:
+                  out.append(f"### {len(moved)} package(s) resolved above the lock\n\n")
+                  out.append("| Package | Locked | Unpinned |\n| --- | --- | --- |\n")
+                  out.extend(f"| `{n}` | {lo} | {un} |\n" for n, lo, un in moved)
+              else:
+                  out.append("### No drift\n\nEvery package resolved to its locked version.\n")
+              if extra_packages:
+                  out.append(
+                      "\n### Resolved but missing from the locked export\n\n"
+                      "Each of these is either a new transitive dependency, or a "
+                      "locked package that an environment marker keeps out of the "
+                      "export.\n\n"
+                  )
+                  out.extend(f"- `{n}` {unpinned[n]}\n" for n in extra_packages)
+
+          report = "".join(out)
+          sys.stdout.write(report)
+          summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary:
+              with open(summary, "a") as handle:
+                  handle.write(report)
+          PY
 
   docker:
     name: Build & push Docker image
