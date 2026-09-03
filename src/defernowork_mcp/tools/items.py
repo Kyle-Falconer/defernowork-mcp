@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Annotated, Any, Awaitable, Callable
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from pydantic import Field
 
 from ..client import DefernoClient, DefernoError
@@ -27,7 +27,7 @@ _TASK_ONLY_FIELDS = frozenset(
 
 
 def register(
-    mcp: FastMCP,
+    mcp: MCPServer,
     get_client: Callable[..., Awaitable[DefernoClient]],
     format_error: Callable[[DefernoError], str],
     compact: Callable[[dict[str, Any]], dict[str, Any]],

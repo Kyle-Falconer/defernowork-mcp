@@ -19,7 +19,7 @@ Coverage:
 - ``delete_item`` dispatches to the right per-kind DELETE and returns
   ``{deleted, id, kind}``.
 
-Tools are exercised through the public interface: a real FastMCP server built by
+Tools are exercised through the public interface: a real MCPServer server built by
 ``create_server`` (client pointed at a respx-mocked backend), the tool looked up
 from the registry and invoked.
 """

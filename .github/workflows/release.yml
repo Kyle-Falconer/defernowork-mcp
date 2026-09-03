@@ -12,8 +12,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Check out Deferno sibling repo for architecture.md (optional)
+      - name: Check out the Deferno sibling repo for architecture.md
         id: checkout_deferno
+        # continue-on-error lets the run reach the test step, where a missing
+        # architecture.md fails with a message naming the document and the
+        # secret. Failing here instead would surface only a checkout error.
         continue-on-error: true
         uses: actions/checkout@v5
         with:
@@ -35,10 +38,11 @@ jobs:
 
       - name: Run default suite (excludes 'live' marker)
         env:
-          # When DEFERNO_REPO_TOKEN is unset, the secondary checkout fails
-          # (continue-on-error) and this path doesn't exist; the inventory
-          # gate test self-skips with a clear reason. Setting the secret
-          # turns on drift enforcement in CI without any further changes.
+          # Setting this variable declares that the architecture document is
+          # expected, so the endpoint inventory gate fails when it is absent
+          # rather than skipping itself. The document comes from the checkout
+          # above, which needs the DEFERNO_REPO_TOKEN repository secret.
+          # Contributors leave the variable unset and the gate self-skips.
           ARCHITECTURE_DOC_PATH: ${{ github.workspace }}/Deferno/docs/architecture.md
         # --no-sync runs in the environment the step above built.
         run: uv run --no-sync pytest -v -m "not live"

@@ -1,6 +1,6 @@
 """Transparent ref resolution for the kind-neutral ``move_item`` tool.
 
-Exercises the tool through the public interface: a real FastMCP server built by
+Exercises the tool through the public interface: a real MCPServer server built by
 ``create_server`` (client pointed at a respx-mocked backend), the tool looked up
 from the registry and invoked.
 

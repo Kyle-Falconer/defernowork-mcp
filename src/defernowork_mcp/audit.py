@@ -10,7 +10,7 @@ import functools
 import logging
 from typing import Any, Callable
 
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 logger = logging.getLogger("defernowork-mcp")
 

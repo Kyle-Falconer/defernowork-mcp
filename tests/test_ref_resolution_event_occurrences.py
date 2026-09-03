@@ -17,7 +17,7 @@ occurrence comment *post* and every occurrence *attachment* op moved to the
 kind-neutral item-level tools with an optional ``date``; their ref resolution is
 covered by test_item_comments.py / test_item_attachments.py.)
 
-Tools are exercised through the public interface: a real FastMCP server built by
+Tools are exercised through the public interface: a real MCPServer server built by
 ``create_server`` (client pointed at a respx-mocked backend), the tool looked up
 from the registry and invoked.
 """

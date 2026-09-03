@@ -1,6 +1,6 @@
 """Behavioural tests for the ``get_item`` MCP tool.
 
-Exercises the tool through the public interface: a real FastMCP server built
+Exercises the tool through the public interface: a real MCPServer server built
 by ``create_server`` (with the client pointed at a respx-mocked backend), the
 tool looked up from the registry and invoked. Covers every Ref input form
 resolving to the same item, Compact-by-default vs ``full=true``, and not-found.

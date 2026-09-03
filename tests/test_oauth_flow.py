@@ -61,7 +61,7 @@ class TestDiscovery:
     def test_metadata_does_not_advertise_client_secret_basic(self, client: httpx.Client):
         """Metadata must NOT advertise client_secret_basic.
 
-        The upstream FastMCP ClientAuthenticator has a bug: it requires
+        The upstream MCPServer ClientAuthenticator has a bug: it requires
         client_id in the form body even for client_secret_basic, but the
         TypeScript MCP SDK (Claude Code) only sends it in the Authorization
         header per RFC 6749.  We work around this by only advertising
@@ -71,7 +71,7 @@ class TestDiscovery:
         data = resp.json()
         auth_methods = data.get("token_endpoint_auth_methods_supported", [])
         assert "client_secret_basic" not in auth_methods, (
-            "client_secret_basic must not be advertised — FastMCP cannot handle it"
+            "client_secret_basic must not be advertised — MCPServer cannot handle it"
         )
         assert "client_secret_post" in auth_methods
 

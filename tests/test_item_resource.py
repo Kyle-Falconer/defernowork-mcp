@@ -1,6 +1,6 @@
 """Behavioural tests for the ``defernowork://item/{ref}`` MCP resource (#8).
 
-Exercises the resource through the real FastMCP surface: a server built by
+Exercises the resource through the real MCPServer surface: a server built by
 ``create_server`` (client pointed at a respx-mocked backend), the registered
 resource template looked up and invoked via the resource manager. Covers each
 Ref input form (UUID, sequence shorthand, canonical ref) resolving to the same
@@ -25,6 +25,8 @@ import pytest
 import respx
 
 from defernowork_mcp import server as srv
+from mcp.server.mcpserver import Context
+
 from defernowork_mcp.client import DefernoClient
 
 BASE = "http://test:3000/api"
@@ -69,13 +71,17 @@ def server(monkeypatch):
 
 
 async def _read(mcp, uri: str):
-    """Resolve a resource URI through the registered FastMCP surface and read it.
+    """Resolve a resource URI through the registered MCPServer surface and read it.
 
     Goes through ``ResourceManager.get_resource`` (URI -> template ``matches``
     regex routing -> ``create_resource`` which calls the real handler) so the
     test reflects real behaviour, then ``read()`` returns the handler's string.
+
+    ``get_resource`` takes a ``Context`` under SDK 2.x. This is the one the
+    server builds for itself when a caller supplies none.
     """
-    resource = await mcp._resource_manager.get_resource(uri)
+    context = Context(mcp_server=mcp, subscriptions=mcp._subscriptions)
+    resource = await mcp._resource_manager.get_resource(uri, context)
     body = await resource.read()
     return json.loads(body)
 

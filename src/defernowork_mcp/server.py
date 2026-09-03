@@ -35,7 +35,8 @@ import os
 from typing import Any
 from urllib.parse import unquote
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
 
 from .client import DefernoClient, DefernoError
 from .credentials import load_credentials
@@ -52,7 +53,14 @@ from .tools import (
     register_tasks,
 )
 
-__all__ = ["create_server", "main", "main_http", "DefernoClient", "DEFAULT_BASE_URL"]
+__all__ = [
+    "create_server",
+    "main",
+    "main_http",
+    "transport_security_settings",
+    "DefernoClient",
+    "DEFAULT_BASE_URL",
+]
 
 logger = logging.getLogger("defernowork-mcp")
 
@@ -177,26 +185,30 @@ def _format_error(exc: DefernoError) -> str:
     return f"Deferno API error {exc.status_code}: {exc.message}"
 
 
-def create_server(http_transport: bool = False) -> FastMCP:
+def transport_security_settings() -> TransportSecuritySettings:
+    """DNS rebinding protection for the HTTP transport.
+
+    ``MCP_ALLOWED_HOSTS`` adds hosts as a comma-separated list. The loopback
+    names are always allowed.
+
+    These settings belong to the transport, not to the server. ``main_http``
+    passes them to ``streamable_http_app``.
+    """
+    raw = os.environ.get("MCP_ALLOWED_HOSTS", "").strip()
+    allowed_hosts = [h.strip() for h in raw.split(",") if h.strip()] if raw else []
+    for default in ("localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*"):
+        if default not in allowed_hosts:
+            allowed_hosts.append(default)
+
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=allowed_hosts,
+    )
+
+
+def create_server(http_transport: bool = False) -> MCPServer:
     global _http_transport_mode, _oauth_provider, _redis_store
     _http_transport_mode = http_transport
-
-    security_kwargs: dict = {}
-    try:
-        from mcp.server.transport_security import TransportSecuritySettings
-
-        raw = os.environ.get("MCP_ALLOWED_HOSTS", "").strip()
-        allowed_hosts = [h.strip() for h in raw.split(",") if h.strip()] if raw else []
-        for default in ("localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*"):
-            if default not in allowed_hosts:
-                allowed_hosts.append(default)
-
-        security_kwargs["transport_security"] = TransportSecuritySettings(
-            enable_dns_rebinding_protection=True,
-            allowed_hosts=allowed_hosts,
-        )
-    except ImportError:
-        pass
 
     # ── OAuth configuration (HTTP mode only) ──────────────────────
     auth_kwargs: dict = {}
@@ -298,10 +310,9 @@ def create_server(http_transport: bool = False) -> FastMCP:
         "`patch_event_occurrence_comment` / `delete_event_occurrence_comment`."
     )
 
-    mcp = FastMCP(
+    mcp = MCPServer(
         "defernowork",
         instructions=instructions,
-        **security_kwargs,
         **auth_kwargs,
     )
 
@@ -357,11 +368,11 @@ def create_server(http_transport: bool = False) -> FastMCP:
 def main() -> None:
     """Entry point for stdio transport (Claude Desktop / Code, Cursor, etc.)."""
     logging.basicConfig(level=os.environ.get("DEFERNO_LOG_LEVEL", "WARNING"))
-    create_server().run()
+    create_server().run("stdio")
 
 
 def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
-    """Entry point for remote HTTP/SSE transport."""
+    """Entry point for the remote streamable-http transport."""
     try:
         import uvicorn
     except ImportError as exc:
@@ -374,19 +385,10 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
 
     mcp = create_server(http_transport=True)
 
-    if hasattr(mcp, "streamable_http_app"):
-        mcp_asgi = mcp.streamable_http_app()
-    elif hasattr(mcp, "sse_app"):
-        logger.warning(
-            "streamable_http_app() not available; falling back to SSE transport. "
-            "Upgrade: pip install 'mcp>=1.2.0'"
-        )
-        mcp_asgi = mcp.sse_app()
-    else:
-        raise SystemExit(
-            "mcp package does not expose an HTTP ASGI app. "
-            "Install mcp>=1.2.0: pip install 'mcp>=1.2.0'"
-        )
+    mcp_asgi = mcp.streamable_http_app(
+        transport_security=transport_security_settings(),
+        host=host,
+    )
 
     # If OAuth is configured, add custom routes
     if _oauth_provider is not None:
@@ -397,7 +399,7 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
 
         # Custom OAuth/OIDC discovery metadata.
         #
-        # We override FastMCP's built-in /.well-known/oauth-authorization-server
+        # We override MCPServer's built-in /.well-known/oauth-authorization-server
         # because the upstream ClientAuthenticator has a bug: it requires
         # client_id in the form body even for client_secret_basic, but the
         # TypeScript MCP SDK (used by Claude Code) only sends it in the
@@ -425,7 +427,7 @@ def main_http(host: str = "0.0.0.0", port: int = 8080) -> None:
             return JSONResponse(_oauth_metadata)
 
         if isinstance(mcp_asgi, Starlette):
-            # Insert at position 0 to override FastMCP's built-in routes
+            # Insert at position 0 to override MCPServer's built-in routes
             mcp_asgi.routes.insert(0,
                 Route("/.well-known/oauth-authorization-server", oauth_metadata_handler, methods=["GET"]),
             )

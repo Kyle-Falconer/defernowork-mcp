@@ -45,8 +45,8 @@ def _ids(fixtures: list[Fixture]) -> list[str]:
 
 
 @pytest.fixture
-def fastmcp_with_stub_client(monkeypatch):
-    """Wire a fresh FastMCP server whose ``_get_client_async`` returns a
+def mcpserver_with_stub_client(monkeypatch):
+    """Wire a fresh MCPServer server whose ``_get_client_async`` returns a
     DefernoClient pointed at our respx-mocked ``BASE``.
 
     The patch must happen *before* ``create_server()`` so that the
@@ -62,9 +62,9 @@ def fastmcp_with_stub_client(monkeypatch):
 
 
 def _registered_tool(mcp, name: str):
-    """Look up a registered tool by name from a FastMCP instance.
+    """Look up a registered tool by name from a MCPServer instance.
 
-    FastMCP stores tools in ``mcp._tool_manager._tools`` (a dict keyed by
+    MCPServer stores tools in ``mcp._tool_manager._tools`` (a dict keyed by
     tool name). Falls back to probing ``tool_manager`` and the ``tools``
     attribute name for forward-compatibility.
     """
@@ -78,7 +78,7 @@ def _registered_tool(mcp, name: str):
     fn = getattr(mcp, name, None)
     if fn is not None:
         return fn
-    raise LookupError(f"tool {name!r} not registered on this FastMCP instance")
+    raise LookupError(f"tool {name!r} not registered on this MCPServer instance")
 
 
 def _tool_kwargs(fixture: Fixture, tool_fn) -> dict[str, Any]:
@@ -158,7 +158,7 @@ def _tool_path_kwarg(fixture: Fixture) -> dict[str, Any]:
 
 
 async def _invoke_tool(tool, kwargs: dict[str, Any]) -> Any:
-    """Call a registered FastMCP tool object."""
+    """Call a registered MCPServer tool object."""
     if hasattr(tool, "fn"):
         return await tool.fn(**kwargs)
     if hasattr(tool, "handler"):
@@ -174,7 +174,7 @@ async def _invoke_tool(tool, kwargs: dict[str, Any]) -> Any:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("fixture", _tool_fixtures(), ids=_ids(_tool_fixtures()))
 async def test_tool_invokes_endpoint_and_returns_payload(
-    fixture: Fixture, fastmcp_with_stub_client
+    fixture: Fixture, mcpserver_with_stub_client
 ):
     success_idx = next(
         (i for i, r in enumerate(fixture.responses) if 200 <= r["status"] < 300),
@@ -193,7 +193,7 @@ async def test_tool_invokes_endpoint_and_returns_payload(
             json=wrap_envelope_data(spec.get("example")),
         )
 
-    tool = _registered_tool(fastmcp_with_stub_client, fixture.mcp_tool)
+    tool = _registered_tool(mcpserver_with_stub_client, fixture.mcp_tool)
 
     kwargs = {**_tool_path_kwarg(fixture), **_tool_kwargs(fixture, tool.fn)}
     result = await _invoke_tool(tool, kwargs)

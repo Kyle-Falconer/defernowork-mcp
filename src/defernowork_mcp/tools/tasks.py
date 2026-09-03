@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Awaitable, Callable
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 
 from ..client import DefernoClient, DefernoError
 from ..refs import resolve_ref
@@ -14,7 +14,7 @@ _UNSET = object()
 
 
 def register(
-    mcp: FastMCP,
+    mcp: MCPServer,
     get_client: Callable[..., Awaitable[DefernoClient]],
     format_error: Callable[[DefernoError], str],
     compact: Callable[[dict[str, Any]], dict[str, Any]],

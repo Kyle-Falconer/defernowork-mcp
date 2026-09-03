@@ -8,7 +8,13 @@ from __future__ import annotations
 
 import pytest
 
-from defernowork_mcp.server import _compact, _UNSET, create_server, DEFAULT_BASE_URL
+from defernowork_mcp.server import (
+    _compact,
+    _UNSET,
+    create_server,
+    transport_security_settings,
+    DEFAULT_BASE_URL,
+)
 from defernowork_mcp.redis_store import _generate_token
 
 
@@ -44,7 +50,7 @@ class TestCompact:
 # ── Server creation (from test_server.py) ───────────────────────────────────
 
 
-def test_create_server_returns_fastmcp():
+def test_create_server_returns_mcpserver():
     server = create_server()
     assert server is not None
 
@@ -79,3 +85,56 @@ class TestStdioMode:
         srv._redis_store = None
         client = await srv._get_client_async()
         assert client is not None
+
+
+# ── Transport settings live on the transport, not the server ────────────────
+#
+# SDK 2.x took transport arguments off the server constructor. They belong to
+# ``run()`` and to ``streamable_http_app()`` now, so ``main_http`` is where the
+# HTTP ones are supplied.
+
+
+class TestTransportSecuritySettings:
+    def test_loopback_is_always_allowed(self, monkeypatch):
+        monkeypatch.delenv("MCP_ALLOWED_HOSTS", raising=False)
+        settings = transport_security_settings()
+
+        assert settings.enable_dns_rebinding_protection
+        for host in ("localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*"):
+            assert host in settings.allowed_hosts
+
+    def test_env_var_adds_hosts(self, monkeypatch):
+        monkeypatch.setenv("MCP_ALLOWED_HOSTS", "app.example.com, mcp.example.com")
+        settings = transport_security_settings()
+
+        assert "app.example.com" in settings.allowed_hosts
+        assert "mcp.example.com" in settings.allowed_hosts
+        # The loopback defaults survive alongside them.
+        assert "127.0.0.1" in settings.allowed_hosts
+
+    def test_blank_env_var_leaves_only_the_defaults(self, monkeypatch):
+        monkeypatch.setenv("MCP_ALLOWED_HOSTS", "   ")
+        settings = transport_security_settings()
+
+        assert set(settings.allowed_hosts) == {
+            "localhost", "localhost:*", "127.0.0.1", "127.0.0.1:*",
+        }
+
+
+def test_server_constructor_carries_no_transport_settings():
+    """The server no longer knows about hosts, ports, or transport security."""
+    fields = set(type(create_server().settings).model_fields)
+
+    assert not fields & {
+        "host", "port", "transport_security", "stateless_http", "json_response",
+    }
+
+
+def test_asgi_app_accepts_what_main_http_passes():
+    """``main_http`` builds the app with exactly these arguments."""
+    app = create_server(http_transport=True).streamable_http_app(
+        transport_security=transport_security_settings(),
+        host="0.0.0.0",
+    )
+
+    assert app is not None
